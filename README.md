@@ -53,11 +53,13 @@ Runs at http://localhost:5173.
 
   ```bash
   cd backend
-  GHCR_TOKEN=ghp_xxx ./deploy.sh
+  gh auth refresh -h github.com -s write:packages,read:packages,delete:packages  # once
+  ./deploy.sh
   ```
 
-  This builds/pushes a Docker image to GHCR, creates the Container Apps environment and an Azure
-  Files share for SQLite persistence (skipped if `DATABASE_URL` points at Azure SQL instead), and
-  deploys the container with scale-to-zero enabled. See the script header for all configurable
-  env vars (resource group, location, CORS origins, Entra ID settings, etc).
+  This uses `gh auth token` for the GHCR push (no PAT needs to be created or stored), builds/pushes
+  a Docker image to GHCR, creates the Container Apps environment and an Azure Files share for
+  SQLite persistence (skipped if `DATABASE_URL` points at Azure SQL instead), and deploys the
+  container with scale-to-zero enabled. See the script header for all configurable env vars
+  (resource group, location, CORS origins, Entra ID settings, etc).
 

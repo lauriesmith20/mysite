@@ -6,15 +6,15 @@
 #   • Azure CLI (az)  ≥ 2.53  — https://learn.microsoft.com/cli/azure/install-azure-cli
 #   • Docker Desktop (or Docker CE) — https://docs.docker.com/get-docker/
 #   • az login already done
-#   • A GitHub Personal Access Token with 'write:packages' scope:
-#       https://github.com/settings/tokens  → "Generate new token (classic)"
-#       Tick: write:packages, read:packages, delete:packages
+#   • gh CLI logged in with the write:packages scope:
+#       gh auth refresh -h github.com -s write:packages,read:packages,delete:packages
+#     GHCR_TOKEN defaults to `gh auth token` — no PAT needs to be created or stored.
 #
 # Usage:
 #   chmod +x deploy.sh
-#   GHCR_TOKEN=ghp_xxx ./deploy.sh        # pass token inline (recommended)
-#   export GHCR_TOKEN=ghp_xxx && ./deploy.sh
-#   IMAGE_TAG=v1.2 GHCR_TOKEN=ghp_xxx ./deploy.sh
+#   ./deploy.sh                           # uses `gh auth token` automatically
+#   GHCR_TOKEN=ghp_xxx ./deploy.sh         # or override with an explicit token
+#   IMAGE_TAG=v1.2 ./deploy.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -32,7 +32,7 @@ APP_PORT="${APP_PORT:-"8000"}"
 
 # GitHub Container Registry
 GHCR_USER="${GHCR_USER:-"lauriesmith20"}"
-GHCR_TOKEN="${GHCR_TOKEN:-""}"                             # required — pass via env var
+GHCR_TOKEN="${GHCR_TOKEN:-"$(gh auth token 2>/dev/null || true)"}"  # falls back to `gh auth token`
 FULL_IMAGE="ghcr.io/${GHCR_USER}/mysite-backend:${IMAGE_TAG}"
 
 # App configuration
@@ -65,8 +65,15 @@ header "Pre-flight checks"
 
 command -v az     &>/dev/null || error "Azure CLI not found. Install: https://learn.microsoft.com/cli/azure/install-azure-cli"
 command -v docker &>/dev/null || error "Docker not found. Install: https://docs.docker.com/get-docker/"
+command -v gh     &>/dev/null || error "gh CLI not found. Install: https://cli.github.com/"
 
-[[ -z "$GHCR_TOKEN" ]] && error "GHCR_TOKEN is not set. Run: GHCR_TOKEN=ghp_xxx ./deploy.sh\nCreate a token at: https://github.com/settings/tokens (needs write:packages)"
+[[ -z "$GHCR_TOKEN" ]] && error "No GHCR token available. Run: gh auth refresh -h github.com -s write:packages,read:packages,delete:packages\nOr pass one explicitly: GHCR_TOKEN=ghp_xxx ./deploy.sh"
+
+TOKEN_SCOPES=$(gh api -i user 2>/dev/null | grep -i '^x-oauth-scopes:' || true)
+if [[ -n "$TOKEN_SCOPES" && "$TOKEN_SCOPES" != *"write:packages"* ]]; then
+  warn "Current gh token lacks the write:packages scope — the ghcr.io push will likely fail."
+  warn "Run: gh auth refresh -h github.com -s write:packages,read:packages,delete:packages"
+fi
 
 ACCOUNT=$(az account show --query "{name:name, id:id}" -o tsv 2>/dev/null) \
   || error "Not logged in to Azure. Run: az login"
