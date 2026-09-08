@@ -1,0 +1,3 @@
+[lint]
+# FastAPI's Depends()/Query() defaults are the idiomatic pattern, not a bug.
+extend-ignore = ["B008"]
