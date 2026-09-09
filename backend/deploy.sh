@@ -12,11 +12,25 @@
 #
 # Usage:
 #   chmod +x deploy.sh
-#   ./deploy.sh                           # uses `gh auth token` automatically
+#   ./deploy.sh                           # loads backend/.env automatically
 #   GHCR_TOKEN=ghp_xxx ./deploy.sh         # or override with an explicit token
 #   IMAGE_TAG=v1.2 ./deploy.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Preserve an explicit CLI-provided DATABASE_URL before .env (which sets it to the local sqlite
+# path for dev) can clobber it.
+CLI_DATABASE_URL="${DATABASE_URL:-}"
+
+# Load TURSO_AUTH_TOKEN/TURSO_DATABASE_URL/etc. from backend/.env so this can just be run directly.
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${SCRIPT_DIR}/.env"
+  set +a
+fi
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 RESOURCE_GROUP="${RESOURCE_GROUP:-"rg-mysite"}"
@@ -42,11 +56,11 @@ AZURE_AD_CLIENT_ID="${AZURE_AD_CLIENT_ID:-""}"
 AZURE_AD_API_AUDIENCE="${AZURE_AD_API_AUDIENCE:-""}"
 
 # Database (Turso/libSQL — free tier, no Azure Files/storage account needed)
-DATABASE_URL="${DATABASE_URL:-""}"
+# .env's DATABASE_URL is the local sqlite path for dev — production must use TURSO_DATABASE_URL.
+DATABASE_URL="${CLI_DATABASE_URL:-${TURSO_DATABASE_URL:-""}}"
 TURSO_AUTH_TOKEN="${TURSO_AUTH_TOKEN:-""}"
 # ─────────────────────────────────────────────────────────────────────────────
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
@@ -67,6 +81,7 @@ command -v gh     &>/dev/null || error "gh CLI not found. Install: https://cli.g
 [[ -z "$GHCR_TOKEN" ]] && error "No GHCR token available. Run: gh auth refresh -h github.com -s write:packages,read:packages,delete:packages\nOr pass one explicitly: GHCR_TOKEN=ghp_xxx ./deploy.sh"
 [[ -z "$DATABASE_URL" ]] && error "DATABASE_URL not set. Pass the Turso URL, e.g.:\n  DATABASE_URL='sqlite+libsql://<db>-<org>.turso.io?secure=true' TURSO_AUTH_TOKEN=... ./deploy.sh"
 [[ -z "$TURSO_AUTH_TOKEN" ]] && error "TURSO_AUTH_TOKEN not set. Create one with: turso db tokens create <db-name>"
+[[ "$DATABASE_URL" != *libsql* ]] && error "DATABASE_URL ('${DATABASE_URL}') doesn't look like a Turso libsql URL — refusing to deploy a local sqlite file to production."
 
 TOKEN_SCOPES=$(gh api -i user 2>/dev/null | grep -i '^x-oauth-scopes:' || true)
 if [[ -n "$TOKEN_SCOPES" && "$TOKEN_SCOPES" != *"write:packages"* ]]; then
