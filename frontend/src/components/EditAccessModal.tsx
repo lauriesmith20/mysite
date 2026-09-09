@@ -54,6 +54,12 @@ export default function EditAccessModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold">Tile access for {account.email}</h2>
+        {account.is_admin && (
+          <p className="mb-3 rounded-md bg-purple-50 px-3 py-2 text-xs text-purple-800 dark:bg-purple-950 dark:text-purple-200">
+            This user is an admin, so they can already see every tile regardless of the choices
+            below.
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {tiles.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">No tiles exist yet.</p>

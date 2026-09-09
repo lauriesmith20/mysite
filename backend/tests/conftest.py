@@ -15,9 +15,9 @@ from backend.features.tiles import models as _tiles_models  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 
-from backend.auth import require_approved_account  # noqa: E402
-from backend.features.accounts.models import AccountStatus, AllowedAccount  # noqa: E402
-from backend.main import app  # noqa: E402
+from backend.auth import require_approved_account
+from backend.features.accounts.models import AccountStatus, AllowedAccount
+from backend.main import app
 
 _test_account = AllowedAccount(
     id=1, email="test@example.com", display_name="Test User", status=AccountStatus.APPROVED

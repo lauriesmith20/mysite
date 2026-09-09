@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     azure_ad_client_id: str | None = None
     azure_ad_api_audience: str | None = None
 
+    # Local-only dev convenience: lets requests authenticate as a seeded dummy account via an
+    # `X-Local-User` header instead of a real Entra bearer token. Only ever honoured when
+    # environment == "local", regardless of this flag, so it can never be enabled in production.
+    local_auth_bypass: bool = False
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
@@ -30,6 +35,10 @@ class Settings(BaseSettings):
     @property
     def auth_enabled(self) -> bool:
         return bool(self.azure_ad_tenant_id and self.azure_ad_client_id)
+
+    @property
+    def local_auth_bypass_enabled(self) -> bool:
+        return self.environment == "local" and self.local_auth_bypass
 
 
 @lru_cache

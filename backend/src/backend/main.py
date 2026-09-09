@@ -7,6 +7,7 @@ from backend.config import get_settings
 from backend.database import SessionLocal
 from backend.features.accounts.router import router as accounts_router
 from backend.features.game_scores.router import router as game_scores_router
+from backend.features.plant_quiz.router import router as plant_quiz_router
 from backend.features.tiles.models import Tile
 from backend.features.tiles.router import router as tiles_router
 from backend.routers import health
@@ -21,7 +22,7 @@ with SessionLocal() as db:
             Tile(
                 title="H2H: Maeve vs Laurie",
                 href="/game-scores",
-                color="#B9E0A5",
+                color="#ed3e5b",
                 icon="swords",
             )
         )
@@ -42,3 +43,4 @@ app.include_router(health.router)
 app.include_router(accounts_router)
 app.include_router(game_scores_router, dependencies=[Depends(require_approved_account)])
 app.include_router(tiles_router, dependencies=[Depends(require_approved_account)])
+app.include_router(plant_quiz_router, dependencies=[Depends(require_approved_account)])

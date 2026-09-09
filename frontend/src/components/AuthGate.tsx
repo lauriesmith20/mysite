@@ -1,6 +1,7 @@
 import { useIsAuthenticated, useMsal } from '@azure/msal-react'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { getMe, type Me } from '../lib/accounts'
+import { LOCAL_USER } from '../lib/localAuth'
 import { apiScopes } from '../lib/msal'
 
 interface AuthContextValue {
@@ -17,7 +18,7 @@ export function useAuth(): AuthContextValue {
 }
 
 export default function AuthGate({ children }: { children: ReactNode }) {
-  const isAuthenticated = useIsAuthenticated()
+  const isAuthenticated = useIsAuthenticated() || Boolean(LOCAL_USER)
   const { instance } = useMsal()
   const [me, setMe] = useState<Me | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +36,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   function signOut() {
+    if (LOCAL_USER) return // nothing to sign out of in local dev mode
     instance.logoutRedirect()
   }
 

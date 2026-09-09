@@ -1,4 +1,5 @@
 import { InteractionRequiredAuthError } from '@azure/msal-browser'
+import { LOCAL_USER } from './localAuth'
 import { apiScopes, msalInstance } from './msal'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -18,9 +19,13 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const token = await getAccessToken()
   const headers = new Headers(init?.headers)
-  if (token) headers.set('Authorization', `Bearer ${token}`)
+  if (LOCAL_USER) {
+    headers.set('X-Local-User', LOCAL_USER)
+  } else {
+    const token = await getAccessToken()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
   if (!response.ok) {

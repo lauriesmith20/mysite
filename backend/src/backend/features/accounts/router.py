@@ -44,6 +44,19 @@ def update_account(
 
 
 @router.get(
+    "/tile-access",
+    response_model=dict[int, list[int]],
+    dependencies=[Depends(require_admin)],
+)
+def get_all_tile_access(db: Session = Depends(get_db)) -> dict[int, list[int]]:
+    """Returns every account's granted tile IDs in one call, keyed by account ID."""
+    result: dict[int, list[int]] = {}
+    for row in db.query(AccountTileAccess).all():
+        result.setdefault(row.account_id, []).append(row.tile_id)
+    return result
+
+
+@router.get(
     "/{account_id}/tile-access",
     response_model=list[int],
     dependencies=[Depends(require_admin)],

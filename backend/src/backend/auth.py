@@ -7,7 +7,7 @@ from functools import lru_cache
 from typing import Any
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from sqlalchemy.orm import Session
@@ -18,6 +18,13 @@ from backend.features.accounts.models import AccountStatus, AllowedAccount
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
+# Local-only dev accounts selectable via the `X-Local-User` header (see Settings.local_auth_bypass).
+# Seed matching rows in allowed_accounts (see backend/README.md) for these to resolve to real accounts.
+LOCAL_USERS: dict[str, dict[str, str]] = {
+    "dummy": {"email": "dummy.user@example.com", "name": "Dummy User"},
+    "dummy-admin": {"email": "dummy.admin@example.com", "name": "Dummy Admin"},
+}
+
 
 @lru_cache
 def _get_jwk_client(tenant_id: str) -> PyJWKClient:
@@ -27,9 +34,17 @@ def _get_jwk_client(tenant_id: str) -> PyJWKClient:
 
 def get_current_claims(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    x_local_user: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """FastAPI dependency that validates an Entra ID access token and returns its claims."""
     settings = get_settings()
+
+    if settings.local_auth_bypass_enabled and x_local_user:
+        local_user = LOCAL_USERS.get(x_local_user)
+        if local_user is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown X-Local-User: {x_local_user}")
+        return local_user
+
     if not settings.auth_enabled:
         raise HTTPException(
             status.HTTP_501_NOT_IMPLEMENTED,

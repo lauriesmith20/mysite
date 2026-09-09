@@ -41,6 +41,11 @@ export async function getAccountTileAccess(id: number): Promise<number[]> {
   return response.json()
 }
 
+export async function getAllTileAccess(): Promise<Record<number, number[]>> {
+  const response = await apiFetch('/api/accounts/tile-access')
+  return response.json()
+}
+
 export async function updateAccountTileAccess(id: number, tileIds: number[]): Promise<number[]> {
   const response = await apiFetch(`/api/accounts/${id}/tile-access`, {
     method: 'PUT',

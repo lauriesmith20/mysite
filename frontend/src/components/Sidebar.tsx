@@ -1,19 +1,23 @@
-import { House, LogOut, Menu, PlayingCards, Settings, X } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { House, LogOut, Menu, Settings, X } from 'lucide-react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './AuthGate'
-
-const navItems = [
-  { to: '/', label: 'Home', icon: House },
-  { to: '/game-scores', label: 'Game Scores', icon: PlayingCards },
-]
+import { getIcon } from '../lib/icons'
+import { listTiles, type Tile } from '../lib/tiles'
 
 const linkClassName =
   'mx-2 flex items-center gap-3 rounded-lg px-3 py-2 text-white transition hover:bg-white/10 md:mx-0 md:h-12 md:w-12 md:justify-center md:px-0 md:py-0'
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [tiles, setTiles] = useState<Tile[]>([])
   const { me, signOut } = useAuth()
+
+  useEffect(() => {
+    listTiles()
+      .then(setTiles)
+      .catch(() => {})
+  }, [])
 
   return (
     <>
@@ -51,21 +55,36 @@ export default function Sidebar() {
         }`}
       >
         <div className="flex flex-col gap-1 md:items-center md:gap-4">
-          {navItems.map(({ to, label, icon: Icon }, index) => (
-            <Fragment key={to}>
-              <Link
-                to={to}
-                onClick={() => setIsOpen(false)}
-                aria-label={label}
-                title={label}
-                className={linkClassName}
-              >
-                <Icon aria-hidden="true" />
-                <span className="md:hidden">{label}</span>
-              </Link>
-              {index === 0 && <hr className="mx-4 my-2 w-auto border-t border-white/70 md:mx-0 md:w-8" />}
-            </Fragment>
-          ))}
+          <Link
+            to="/"
+            onClick={() => setIsOpen(false)}
+            aria-label="Home"
+            title="Home"
+            className={linkClassName}
+          >
+            <House aria-hidden="true" />
+            <span className="md:hidden">Home</span>
+          </Link>
+          {tiles.length > 0 && (
+            <hr className="mx-4 my-2 w-auto border-t border-white/70 md:mx-0 md:w-8" />
+          )}
+          {tiles.map((tile) => {
+            const Icon = getIcon(tile.icon)
+            return (
+              <Fragment key={tile.id}>
+                <Link
+                  to={tile.href}
+                  onClick={() => setIsOpen(false)}
+                  aria-label={tile.title}
+                  title={tile.title}
+                  className={linkClassName}
+                >
+                  <Icon aria-hidden="true" />
+                  <span className="md:hidden">{tile.title}</span>
+                </Link>
+              </Fragment>
+            )
+          })}
         </div>
 
         <div className="flex flex-col gap-1 md:items-center md:gap-2">
