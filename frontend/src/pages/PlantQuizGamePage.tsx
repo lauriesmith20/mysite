@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import {
   getBigLeaderboard,
   getLeaderboard,
@@ -56,6 +56,7 @@ export default function PlantQuizGamePage() {
   const [screen, setScreen] = useState<'loading' | 'quiz' | 'done'>('loading')
   const [normalLeaderboard, setNormalLeaderboard] = useState<LeaderboardEntry[]>([])
   const [bigLeaderboard, setBigLeaderboard] = useState<BigLeaderboardEntry[]>([])
+  const [imageLoaded, setImageLoaded] = useState(false)
 
   useEffect(() => {
     setScreen('loading')
@@ -76,6 +77,25 @@ export default function PlantQuizGamePage() {
     () => (current && plants.length > 0 ? buildOptions(plants, current) : []),
     [current, plants],
   )
+
+  // Preload the image ahead of showing it, so the visible picture can never lag behind the
+  // question/options — answering is disabled until it's ready.
+  useEffect(() => {
+    if (!current) return
+    setImageLoaded(false)
+    let cancelled = false
+    const img = new Image()
+    img.src = current.img
+    img.onload = () => {
+      if (!cancelled) setImageLoaded(true)
+    }
+    img.onerror = () => {
+      if (!cancelled) setImageLoaded(true)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [current])
 
   async function finish(finalScore: { correct: number; total: number }) {
     setScreen('done')
@@ -159,11 +179,17 @@ export default function PlantQuizGamePage() {
           </div>
 
           <div className="mb-6 flex justify-center">
-            <img
-              src={current.img}
-              alt="A botanical illustration — can you name this plant?"
-              className="h-56 w-56 rounded-xl border border-gray-200 object-contain dark:border-gray-800"
-            />
+            <div className="flex h-56 w-56 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800">
+              {imageLoaded ? (
+                <img
+                  src={current.img}
+                  alt="A botanical illustration — can you name this plant?"
+                  className="h-56 w-56 rounded-xl object-contain"
+                />
+              ) : (
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" aria-label="Loading image…" />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -175,7 +201,7 @@ export default function PlantQuizGamePage() {
                 <button
                   key={opt.name}
                   type="button"
-                  disabled={answered}
+                  disabled={answered || !imageLoaded}
                   onClick={() => answer(opt)}
                   className={`rounded-lg border px-4 py-3 text-left text-sm font-medium transition disabled:cursor-not-allowed ${
                     showCorrect
