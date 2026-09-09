@@ -31,3 +31,14 @@ class GameRead(BaseModel):
     last_updated: datetime.datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class ScoreHistoryRead(BaseModel):
+    id: int
+    player: str
+    delta: int
+    resulting_score: int
+    changed_by: str
+    created_at: datetime.datetime
+
+    model_config = {"from_attributes": True}

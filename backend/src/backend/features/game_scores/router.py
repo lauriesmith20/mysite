@@ -4,16 +4,23 @@ import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.auth import require_approved_account
 from backend.database import get_db
-from backend.features.game_scores.models import Game
+from backend.features.accounts.models import AllowedAccount
+from backend.features.game_scores.models import Game, GameScoreHistory
 from backend.features.game_scores.schemas import (
     GameCreate,
     GameRead,
     GameUpdate,
+    ScoreHistoryRead,
     ScoreIncrement,
 )
 
 router = APIRouter(prefix="/api/game-scores", tags=["game-scores"])
+
+
+def _player_name(account: AllowedAccount) -> str:
+    return account.display_name or account.email
 
 
 @router.get("/", response_model=list[GameRead])
@@ -39,7 +46,12 @@ def get_game(game_id: int, db: Session = Depends(get_db)) -> Game:
 
 
 @router.post("/{game_id}/score", response_model=GameRead)
-def update_score(game_id: int, payload: ScoreIncrement, db: Session = Depends(get_db)) -> Game:
+def update_score(
+    game_id: int,
+    payload: ScoreIncrement,
+    account: AllowedAccount = Depends(require_approved_account),
+    db: Session = Depends(get_db),
+) -> Game:
     game = db.get(Game, game_id)
     if game is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Game not found")
@@ -50,12 +62,37 @@ def update_score(game_id: int, payload: ScoreIncrement, db: Session = Depends(ge
 
     if payload.player == "laurie":
         game.laurie_score += payload.delta
+        resulting_score = game.laurie_score
     else:
         game.maeve_score += payload.delta
+        resulting_score = game.maeve_score
     game.last_updated = now
+    db.add(
+        GameScoreHistory(
+            game_id=game.id,
+            player=payload.player,
+            delta=payload.delta,
+            resulting_score=resulting_score,
+            changed_by=_player_name(account),
+            created_at=now,
+        )
+    )
     db.commit()
     db.refresh(game)
     return game
+
+
+@router.get("/{game_id}/history", response_model=list[ScoreHistoryRead])
+def get_score_history(game_id: int, db: Session = Depends(get_db)) -> list[GameScoreHistory]:
+    game = db.get(Game, game_id)
+    if game is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Game not found")
+    return list(
+        db.query(GameScoreHistory)
+        .filter(GameScoreHistory.game_id == game_id)
+        .order_by(GameScoreHistory.created_at.desc())
+        .all()
+    )
 
 
 @router.delete("/{game_id}", status_code=status.HTTP_204_NO_CONTENT)

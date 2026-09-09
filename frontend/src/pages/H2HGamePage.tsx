@@ -1,18 +1,32 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Settings } from 'lucide-react'
-import { deleteGame, getGame, hasUpdatedToday, updateGame, updateScore, type Game } from '../lib/gameScores'
+import {
+  deleteGame,
+  getGame,
+  getScoreHistory,
+  hasUpdatedToday,
+  updateGame,
+  updateScore,
+  type Game,
+  type ScoreHistoryEntry,
+} from '../lib/gameScores'
 import EditGameModal from '../components/EditGameModal'
 
 export default function H2HGamePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [game, setGame] = useState<Game | null>(null)
+  const [history, setHistory] = useState<ScoreHistoryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (id) getGame(Number(id)).then(setGame)
+  }, [id])
+
+  useEffect(() => {
+    if (id) getScoreHistory(Number(id)).then(setHistory)
   }, [id])
 
   async function handleScore(player: 'laurie' | 'maeve') {
@@ -21,6 +35,7 @@ export default function H2HGamePage() {
     try {
       const updated = await updateScore(Number(id), player)
       setGame(updated)
+      setHistory(await getScoreHistory(Number(id)))
     } catch {
       setError('Score already updated today for this daily game.')
     }
@@ -104,6 +119,34 @@ export default function H2HGamePage() {
           </button>
         </div>
       </div>
+      {history.length > 0 && (
+        <div className="mt-10 text-left">
+          <h2 className="mb-3 text-lg font-semibold">History</h2>
+          <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Who</th>
+                  <th className="px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">When</th>
+                  <th className="px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Change</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((entry) => (
+                  <tr key={entry.id} className="border-t border-gray-100 dark:border-gray-800">
+                    <td className="px-4 py-2">{entry.changed_by}</td>
+                    <td className="px-4 py-2">{new Date(entry.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2">
+                      {entry.player === 'laurie' ? 'Laurie' : 'Maeve'} {entry.delta >= 0 ? '+' : ''}
+                      {entry.delta} → {entry.resulting_score}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {editing && (
         <EditGameModal
           game={game}

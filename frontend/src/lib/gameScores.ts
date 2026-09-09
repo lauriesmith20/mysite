@@ -10,6 +10,15 @@ export interface Game {
   last_updated: string | null
 }
 
+export interface ScoreHistoryEntry {
+  id: number
+  player: 'laurie' | 'maeve'
+  delta: number
+  resulting_score: number
+  changed_by: string
+  created_at: string
+}
+
 export async function listGames(): Promise<Game[]> {
   const response = await apiFetch('/api/game-scores/')
   return response.json()
@@ -68,6 +77,11 @@ export async function deleteGame(id: number): Promise<void> {
     const body = await response.json().catch(() => null)
     throw new Error(body?.detail ?? 'Failed to delete game')
   }
+}
+
+export async function getScoreHistory(id: number): Promise<ScoreHistoryEntry[]> {
+  const response = await apiFetch(`/api/game-scores/${id}/history`)
+  return response.json()
 }
 
 export function hasUpdatedToday(game: Game): boolean {
