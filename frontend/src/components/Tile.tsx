@@ -1,17 +1,20 @@
 import { Link } from 'react-router-dom'
-import type { Feature } from '../features'
+import { getIcon } from '../lib/icons'
+import type { Tile } from '../lib/tiles'
 
-export default function Tile({ feature }: { feature: Feature }) {
+export default function TileComponent({ tile }: { tile: Tile }) {
+  const Icon = getIcon(tile.icon)
+
   return (
     <Link
-      to={feature.href}
-      className="flex flex-col gap-2 rounded-xl border border-gray-200 p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800"
+      to={tile.href}
+      className="flex aspect-square flex-col overflow-hidden rounded-xl shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      style={{ backgroundColor: tile.color }}
     >
-      <span className="text-3xl" aria-hidden="true">
-        {feature.emoji}
-      </span>
-      <h2 className="text-lg font-semibold">{feature.title}</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{feature.description}</p>
+      <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-4">
+        <Icon aria-hidden="true" className="h-full w-full" strokeWidth={1.5} />
+      </div>
+      <h2 className="shrink-0 truncate px-3 pb-3 text-center text-sm font-semibold">{tile.title}</h2>
     </Link>
   )
 }

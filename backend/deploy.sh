@@ -41,12 +41,9 @@ AZURE_AD_TENANT_ID="${AZURE_AD_TENANT_ID:-""}"
 AZURE_AD_CLIENT_ID="${AZURE_AD_CLIENT_ID:-""}"
 AZURE_AD_API_AUDIENCE="${AZURE_AD_API_AUDIENCE:-""}"
 
-# Storage (SQLite persistence)
-STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-""}"                   # auto-detected or created
-STORAGE_SHARE="${STORAGE_SHARE:-"mysite-data"}"
-STORAGE_MOUNT_NAME="${STORAGE_MOUNT_NAME:-"mysitedata"}"
-STORAGE_MOUNT_PATH="${STORAGE_MOUNT_PATH:-"/app/data"}"
-DATABASE_URL="${DATABASE_URL:-"sqlite:////app/data/app.db"}"
+# Database (Turso/libSQL — free tier, no Azure Files/storage account needed)
+DATABASE_URL="${DATABASE_URL:-""}"
+TURSO_AUTH_TOKEN="${TURSO_AUTH_TOKEN:-""}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -68,6 +65,8 @@ command -v docker &>/dev/null || error "Docker not found. Install: https://docs.
 command -v gh     &>/dev/null || error "gh CLI not found. Install: https://cli.github.com/"
 
 [[ -z "$GHCR_TOKEN" ]] && error "No GHCR token available. Run: gh auth refresh -h github.com -s write:packages,read:packages,delete:packages\nOr pass one explicitly: GHCR_TOKEN=ghp_xxx ./deploy.sh"
+[[ -z "$DATABASE_URL" ]] && error "DATABASE_URL not set. Pass the Turso URL, e.g.:\n  DATABASE_URL='sqlite+libsql://<db>-<org>.turso.io?secure=true' TURSO_AUTH_TOKEN=... ./deploy.sh"
+[[ -z "$TURSO_AUTH_TOKEN" ]] && error "TURSO_AUTH_TOKEN not set. Create one with: turso db tokens create <db-name>"
 
 TOKEN_SCOPES=$(gh api -i user 2>/dev/null | grep -i '^x-oauth-scopes:' || true)
 if [[ -n "$TOKEN_SCOPES" && "$TOKEN_SCOPES" != *"write:packages"* ]]; then
@@ -111,51 +110,8 @@ docker push "$FULL_IMAGE"
 
 success "Image pushed: ${FULL_IMAGE}"
 
-# ── 3. Azure Storage Account & File Share (SQLite persistence) ────────────────
-header "3 / Storage Account & File Share"
-# Skip if DATABASE_URL has been overridden to point at Azure SQL instead of SQLite.
-
-if [[ "$DATABASE_URL" == sqlite* ]]; then
-  EXISTING_SA=$(az storage account list \
-    --resource-group "$RESOURCE_GROUP" \
-    --query "[?starts_with(name,'mysitedata')].name" \
-    --output tsv 2>/dev/null | head -1 || true)
-
-  if [[ -n "$EXISTING_SA" ]]; then
-    STORAGE_ACCOUNT="$EXISTING_SA"
-    info "Reusing existing storage account: '${STORAGE_ACCOUNT}'"
-  else
-    STORAGE_ACCOUNT="mysitedata${RANDOM}"
-    info "Creating storage account '${STORAGE_ACCOUNT}'..."
-    az storage account create \
-      --name           "$STORAGE_ACCOUNT" \
-      --resource-group "$RESOURCE_GROUP" \
-      --location       "$LOCATION" \
-      --sku            Standard_LRS \
-      --kind           StorageV2 \
-      --output         none
-    success "Storage account created."
-  fi
-
-  STORAGE_KEY=$(az storage account keys list \
-    --resource-group  "$RESOURCE_GROUP" \
-    --account-name    "$STORAGE_ACCOUNT" \
-    --query           "[0].value" \
-    --output          tsv)
-
-  az storage share create \
-    --name         "$STORAGE_SHARE" \
-    --account-name "$STORAGE_ACCOUNT" \
-    --account-key  "$STORAGE_KEY" \
-    --output       none 2>/dev/null || true
-
-  success "File share '${STORAGE_SHARE}' ready."
-else
-  info "DATABASE_URL is not sqlite — skipping storage account/file share setup."
-fi
-
-# ── 4. Container Apps Environment ─────────────────────────────────────────────
-header "4 / Container Apps Environment"
+# ── 3. Container Apps Environment ─────────────────────────────────────────────
+header "3 / Container Apps Environment"
 
 if az containerapp env show --name "$CONTAINER_ENV" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   info "Environment '${CONTAINER_ENV}' already exists — skipping."
@@ -169,22 +125,8 @@ else
   success "Environment created."
 fi
 
-if [[ "$DATABASE_URL" == sqlite* ]]; then
-  info "Linking storage to environment..."
-  az containerapp env storage set \
-    --name                     "$CONTAINER_ENV" \
-    --resource-group           "$RESOURCE_GROUP" \
-    --storage-name             "$STORAGE_MOUNT_NAME" \
-    --azure-file-account-name  "$STORAGE_ACCOUNT" \
-    --azure-file-account-key   "$STORAGE_KEY" \
-    --azure-file-share-name    "$STORAGE_SHARE" \
-    --access-mode              ReadWrite \
-    --output                   none
-  success "Storage linked."
-fi
-
-# ── 5. Container App ──────────────────────────────────────────────────────────
-header "5 / Container App"
+# ── 4. Container App ──────────────────────────────────────────────────────────
+header "4 / Container App"
 
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 APP_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${APP_NAME}"
@@ -211,16 +153,9 @@ else
   success "Container App created."
 fi
 
-# Build volumes/mounts block only when using the SQLite + Azure Files setup.
-VOLUMES_JSON="[]"
-MOUNTS_JSON="[]"
-if [[ "$DATABASE_URL" == sqlite* ]]; then
-  VOLUMES_JSON="[{\"name\": \"${STORAGE_MOUNT_NAME}\", \"storageType\": \"AzureFile\", \"storageName\": \"${STORAGE_MOUNT_NAME}\"}]"
-  MOUNTS_JSON="[{\"volumeName\": \"${STORAGE_MOUNT_NAME}\", \"mountPath\": \"${STORAGE_MOUNT_PATH}\"}]"
-fi
-
-# Single atomic ARM PATCH — sets image + registry + env vars + volume mount in one revision.
-info "Applying image + config + volume mount in one atomic update..."
+# Single atomic ARM PATCH — sets image + registry + env vars in one revision.
+# TURSO_AUTH_TOKEN is passed as a Container Apps secret, never as a plain env value.
+info "Applying image + config in one atomic update..."
 az rest --method PATCH \
   --url "${APP_ID}?api-version=2023-05-01" \
   --headers "Content-Type=application/json" \
@@ -233,18 +168,20 @@ az rest --method PATCH \
           \"username\": \"${GHCR_USER}\",
           \"passwordSecretRef\": \"ghcr-token\"
         }],
-        \"secrets\": [{ \"name\": \"ghcr-token\", \"value\": \"${GHCR_TOKEN}\" }]
+        \"secrets\": [
+          { \"name\": \"ghcr-token\", \"value\": \"${GHCR_TOKEN}\" },
+          { \"name\": \"turso-auth-token\", \"value\": \"${TURSO_AUTH_TOKEN}\" }
+        ]
       },
       \"template\": {
-        \"volumes\": ${VOLUMES_JSON},
         \"containers\": [{
           \"name\": \"${APP_NAME}\",
           \"image\": \"${FULL_IMAGE}\",
           \"resources\": { \"cpu\": ${CPU}, \"memory\": \"${MEMORY}\" },
-          \"volumeMounts\": ${MOUNTS_JSON},
           \"env\": [
             { \"name\": \"ENVIRONMENT\", \"value\": \"production\" },
             { \"name\": \"DATABASE_URL\", \"value\": \"${DATABASE_URL}\" },
+            { \"name\": \"TURSO_AUTH_TOKEN\", \"secretRef\": \"turso-auth-token\" },
             { \"name\": \"CORS_ORIGINS\", \"value\": \"${CORS_ORIGINS}\" },
             { \"name\": \"AZURE_AD_TENANT_ID\", \"value\": \"${AZURE_AD_TENANT_ID}\" },
             { \"name\": \"AZURE_AD_CLIENT_ID\", \"value\": \"${AZURE_AD_CLIENT_ID}\" },
@@ -260,8 +197,8 @@ az rest --method PATCH \
   }" --output none
 success "Container App updated."
 
-# ── 6. Done ───────────────────────────────────────────────────────────────────
-header "6 / Done!"
+# ── 5. Done ───────────────────────────────────────────────────────────────────
+header "5 / Done!"
 
 APP_URL=$(az containerapp show \
   --name           "$APP_NAME" \
@@ -277,9 +214,7 @@ echo -e "   Resource Group : ${RESOURCE_GROUP}"
 echo -e "   Location       : ${LOCATION}"
 echo -e "   Image          : ${FULL_IMAGE}"
 echo -e "   Container App  : ${APP_NAME}"
-if [[ "$DATABASE_URL" == sqlite* ]]; then
-  echo -e "   Storage Acct   : ${STORAGE_ACCOUNT} (share: ${STORAGE_SHARE})"
-fi
+echo -e "   Database       : Turso (${DATABASE_URL})"
 echo ""
 echo -e "${YELLOW}Tip:${RESET} Set VITE_API_BASE_URL=https://${APP_URL} as a GitHub Actions repo/environment"
 echo -e "variable so the deployed frontend points at this backend."

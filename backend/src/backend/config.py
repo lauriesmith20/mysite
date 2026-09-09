@@ -9,8 +9,10 @@ class Settings(BaseSettings):
 
     environment: str = "local"
 
-    # SQLite locally, Azure SQL connection string in production.
+    # SQLite locally; a "sqlite+libsql://<db>.turso.io?secure=true" URL in production (Turso).
     database_url: str = "sqlite:///./app.db"
+    # Auth token for Turso, kept separate from database_url so it's never logged as part of the URL.
+    turso_auth_token: str | None = None
 
     # Comma-separated list of allowed CORS origins (e.g. the GitHub Pages site).
     cors_origins: str = "http://localhost:5173"
