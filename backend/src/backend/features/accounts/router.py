@@ -4,8 +4,14 @@ from sqlalchemy.orm import Session
 
 from backend.auth import get_or_create_account, require_admin
 from backend.database import get_db
-from backend.features.accounts.models import AllowedAccount
-from backend.features.accounts.schemas import AccountRead, AccountUpdate, MeRead
+from backend.features.accounts.models import AccountTileAccess, AllowedAccount
+from backend.features.accounts.schemas import (
+    AccountRead,
+    AccountUpdate,
+    MeRead,
+    TileAccessUpdate,
+)
+from backend.features.tiles.models import Tile
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -35,3 +41,39 @@ def update_account(
     db.commit()
     db.refresh(account)
     return account
+
+
+@router.get(
+    "/{account_id}/tile-access",
+    response_model=list[int],
+    dependencies=[Depends(require_admin)],
+)
+def get_tile_access(account_id: int, db: Session = Depends(get_db)) -> list[int]:
+    account = db.get(AllowedAccount, account_id)
+    if account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    rows = db.query(AccountTileAccess).filter(AccountTileAccess.account_id == account_id).all()
+    return [row.tile_id for row in rows]
+
+
+@router.put(
+    "/{account_id}/tile-access",
+    response_model=list[int],
+    dependencies=[Depends(require_admin)],
+)
+def update_tile_access(
+    account_id: int, payload: TileAccessUpdate, db: Session = Depends(get_db)
+) -> list[int]:
+    account = db.get(AllowedAccount, account_id)
+    if account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+
+    valid_tile_ids = {tid for (tid,) in db.query(Tile.id).filter(Tile.id.in_(payload.tile_ids))}
+    if valid_tile_ids != set(payload.tile_ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "One or more tile IDs do not exist")
+
+    db.query(AccountTileAccess).filter(AccountTileAccess.account_id == account_id).delete()
+    for tile_id in valid_tile_ids:
+        db.add(AccountTileAccess(account_id=account_id, tile_id=tile_id))
+    db.commit()
+    return sorted(valid_tile_ids)

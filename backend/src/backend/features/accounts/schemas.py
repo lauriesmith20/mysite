@@ -22,6 +22,10 @@ class AccountUpdate(BaseModel):
     is_admin: bool | None = None
 
 
+class TileAccessUpdate(BaseModel):
+    tile_ids: list[int]
+
+
 class MeRead(BaseModel):
     email: str
     display_name: str | None

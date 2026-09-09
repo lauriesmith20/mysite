@@ -2,7 +2,7 @@
 import datetime
 import enum
 
-from sqlalchemy import Enum
+from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -28,4 +28,17 @@ class AllowedAccount(Base):
     is_admin: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         default=lambda: datetime.datetime.now(datetime.UTC), nullable=False
+    )
+
+
+class AccountTileAccess(Base):
+    """Grants a single account access to a single homepage tile/feature."""
+
+    __tablename__ = "account_tile_access"
+
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("allowed_accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    tile_id: Mapped[int] = mapped_column(
+        ForeignKey("tiles.id", ondelete="CASCADE"), primary_key=True
     )

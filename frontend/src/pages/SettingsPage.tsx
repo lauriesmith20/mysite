@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react'
-import { getMe, listAccounts, updateAccount, type Account, type AccountStatus } from '../lib/accounts'
+import EditAccessModal from '../components/EditAccessModal'
+import {
+  getAccountTileAccess,
+  getMe,
+  listAccounts,
+  updateAccount,
+  updateAccountTileAccess,
+  type Account,
+  type AccountStatus,
+} from '../lib/accounts'
+import { listTiles, type Tile } from '../lib/tiles'
 
 const statusStyles: Record<AccountStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -9,13 +19,19 @@ const statusStyles: Record<AccountStatus, string> = {
 
 export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [tiles, setTiles] = useState<Tile[]>([])
   const [myEmail, setMyEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [accessAccount, setAccessAccount] = useState<Account | null>(null)
+  const [accessTileIds, setAccessTileIds] = useState<number[]>([])
 
   useEffect(() => {
     listAccounts()
       .then(setAccounts)
       .catch(() => setError('Failed to load accounts.'))
+    listTiles()
+      .then(setTiles)
+      .catch(() => {})
     getMe()
       .then((me) => setMyEmail(me.email))
       .catch(() => {})
@@ -36,6 +52,21 @@ export default function SettingsPage() {
     }
     const updated = await updateAccount(id, { is_admin })
     setAccounts((prev) => prev.map((a) => (a.id === id ? updated : a)))
+  }
+
+  async function handleEditAccess(account: Account) {
+    setAccessAccount(account)
+    try {
+      const tileIds = await getAccountTileAccess(account.id)
+      setAccessTileIds(tileIds)
+    } catch {
+      setAccessTileIds([])
+    }
+  }
+
+  async function handleSaveAccess(tileIds: number[]) {
+    if (!accessAccount) return
+    await updateAccountTileAccess(accessAccount.id, tileIds)
   }
 
   return (
@@ -92,6 +123,13 @@ export default function SettingsPage() {
                         Deny
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => handleEditAccess(account)}
+                      className="rounded-md bg-gray-900 px-2 py-1 text-xs text-white hover:opacity-90 dark:bg-white dark:text-gray-900"
+                    >
+                      Edit access
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -99,6 +137,16 @@ export default function SettingsPage() {
           </table>
         </div>
       </section>
+
+      {accessAccount && (
+        <EditAccessModal
+          account={accessAccount}
+          tiles={tiles}
+          initialTileIds={accessTileIds}
+          onClose={() => setAccessAccount(null)}
+          onSave={handleSaveAccess}
+        />
+      )}
     </main>
   )
 }

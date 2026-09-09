@@ -35,3 +35,17 @@ export async function updateAccount(
   })
   return response.json()
 }
+
+export async function getAccountTileAccess(id: number): Promise<number[]> {
+  const response = await apiFetch(`/api/accounts/${id}/tile-access`)
+  return response.json()
+}
+
+export async function updateAccountTileAccess(id: number, tileIds: number[]): Promise<number[]> {
+  const response = await apiFetch(`/api/accounts/${id}/tile-access`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tile_ids: tileIds }),
+  })
+  return response.json()
+}

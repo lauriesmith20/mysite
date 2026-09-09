@@ -2,7 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.auth import require_approved_account
 from backend.database import get_db
+from backend.features.accounts.models import AccountTileAccess, AllowedAccount
 from backend.features.tiles.models import Tile
 from backend.features.tiles.schemas import TileCreate, TileRead
 
@@ -10,8 +12,18 @@ router = APIRouter(prefix="/api/tiles", tags=["tiles"])
 
 
 @router.get("/", response_model=list[TileRead])
-def list_tiles(db: Session = Depends(get_db)) -> list[Tile]:
-    return list(db.query(Tile).order_by(Tile.id).all())
+def list_tiles(
+    db: Session = Depends(get_db),
+    account: AllowedAccount = Depends(require_approved_account),
+) -> list[Tile]:
+    """Returns all tiles for admins, or only the tiles the caller has been granted access to."""
+    if account.is_admin:
+        return list(db.query(Tile).order_by(Tile.id).all())
+    allowed_ids = [
+        row.tile_id
+        for row in db.query(AccountTileAccess).filter(AccountTileAccess.account_id == account.id)
+    ]
+    return list(db.query(Tile).filter(Tile.id.in_(allowed_ids)).order_by(Tile.id).all())
 
 
 @router.post("/", response_model=TileRead, status_code=status.HTTP_201_CREATED)
