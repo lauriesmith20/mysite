@@ -42,8 +42,8 @@ export default function H2HGamePage() {
       const updated = await updateScore(Number(id), playerId)
       setGame(updated)
       setHistory(await getScoreHistory(Number(id)))
-    } catch {
-      setError('Score already updated today for this daily game.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update score.')
     }
   }
 
@@ -56,7 +56,7 @@ export default function H2HGamePage() {
   async function handleDelete() {
     if (!id) return
     await deleteGame(Number(id))
-    navigate('/game-scores')
+    navigate(`/game-scores/${friendId}`)
   }
 
   if (!game) {
@@ -68,12 +68,13 @@ export default function H2HGamePage() {
   }
 
   const locked = game.is_daily && hasUpdatedToday(game)
+  const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12 text-center">
       <div className="mb-6 flex items-center justify-between">
         <Link
-          to="/game-scores"
+          to={`/game-scores/${friendId}`}
           className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />

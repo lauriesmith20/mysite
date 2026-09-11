@@ -23,6 +23,10 @@ class Game(Base):
     opponent_score: Mapped[int] = mapped_column(default=0, nullable=False)
     is_daily: Mapped[bool] = mapped_column(default=False, nullable=False)
     last_updated: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
+    # Legacy NOT NULL columns from before creator/opponent accounts existed, kept in place (rather
+    # than dropped via a Turso-unsafe batch table rebuild) — still need a value on every insert.
+    laurie_score: Mapped[int] = mapped_column(default=0)
+    maeve_score: Mapped[int] = mapped_column(default=0)
 
 
 class GameScoreHistory(Base):
@@ -35,3 +39,6 @@ class GameScoreHistory(Base):
     resulting_score: Mapped[int] = mapped_column(nullable=False)
     changed_by: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(nullable=False)
+    # Legacy NOT NULL column from before creator/opponent accounts existed, kept in place (rather
+    # than dropped via a Turso-unsafe batch table rebuild) — still needs a value on every insert.
+    player: Mapped[str] = mapped_column(default="")
