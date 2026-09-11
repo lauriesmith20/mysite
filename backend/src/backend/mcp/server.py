@@ -16,7 +16,9 @@ from backend.mcp.auth import EntraTokenVerifier
 
 settings = get_settings()
 
-_resource_url = f"{settings.public_base_url or 'http://127.0.0.1:8000'}/mcp/"
+# No trailing slash: must exactly match the MCP server URL as entered in Claude's connector
+# settings (Claude's `resource` param is compared byte-for-byte against this).
+_resource_url = f"{settings.public_base_url or 'http://127.0.0.1:8000'}/mcp"
 
 mcp_server = MCPServer(
     "Personal Website",

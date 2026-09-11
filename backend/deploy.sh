@@ -20,9 +20,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Preserve an explicit CLI-provided DATABASE_URL before .env (which sets it to the local sqlite
-# path for dev) can clobber it.
+# Preserve an explicit CLI-provided DATABASE_URL/PUBLIC_BASE_URL before .env (which may set its
+# own values) can clobber them.
 CLI_DATABASE_URL="${DATABASE_URL:-}"
+CLI_PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-}"
 
 # Load TURSO_AUTH_TOKEN/TURSO_DATABASE_URL/etc. from backend/.env so this can just be run directly.
 if [[ -f "${SCRIPT_DIR}/.env" ]]; then
@@ -169,13 +170,13 @@ else
 fi
 
 # FQDN is known as soon as the app exists (create or update) — used to advertise the MCP
-# server's public resource URL. Override with PUBLIC_BASE_URL if you front this with a custom domain.
+# server's public resource URL. CLI/.env's PUBLIC_BASE_URL (e.g. a custom domain) takes priority.
 DEFAULT_APP_URL=$(az containerapp show \
   --name           "$APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --query          "properties.configuration.ingress.fqdn" \
   --output         tsv)
-PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-"https://${DEFAULT_APP_URL}"}"
+PUBLIC_BASE_URL="${CLI_PUBLIC_BASE_URL:-${PUBLIC_BASE_URL:-"https://${DEFAULT_APP_URL}"}}"
 
 # Single atomic ARM PATCH — sets image + registry + env vars in one revision.
 # TURSO_AUTH_TOKEN is passed as a Container Apps secret, never as a plain env value.
