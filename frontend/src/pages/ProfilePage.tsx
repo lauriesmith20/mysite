@@ -180,8 +180,10 @@ export default function ProfilePage() {
                     className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-2 dark:border-gray-800"
                   >
                     <Avatar name={nameFor(friend)} color={friend.avatar_color} size="sm" />
-                    <span className="font-medium">{nameFor(friend)}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{friend.email}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{nameFor(friend)}</p>
+                      <p className="truncate text-sm text-gray-500 dark:text-gray-400">{friend.email}</p>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -197,9 +199,11 @@ export default function ProfilePage() {
                   className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-2 dark:border-gray-800"
                 >
                   <Avatar name={nameFor(entry)} color={entry.avatar_color} size="sm" />
-                  <span className="font-medium">{nameFor(entry)}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{entry.email}</span>
-                  <div className="ml-auto">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{nameFor(entry)}</p>
+                    <p className="truncate text-sm text-gray-500 dark:text-gray-400">{entry.email}</p>
+                  </div>
+                  <div className="shrink-0">
                     {entry.relation === 'none' && (
                       <button
                         type="button"
@@ -239,8 +243,13 @@ export default function ProfilePage() {
                   className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-2 dark:border-gray-800"
                 >
                   <Avatar name={nameFor(request.requester)} color={request.requester.avatar_color} size="sm" />
-                  <span className="font-medium">{nameFor(request.requester)}</span>
-                  <div className="ml-auto flex gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{nameFor(request.requester)}</p>
+                    <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                      {request.requester.email}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
                       onClick={() => handleAccept(request.id)}
