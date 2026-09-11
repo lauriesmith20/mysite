@@ -8,6 +8,8 @@ from backend.database import Base
 
 # Import every feature's models so they register on Base.metadata for autogenerate.
 from backend.features.accounts import models as accounts_models  # noqa: F401
+from backend.features.beer_bets import models as beer_bets_models  # noqa: F401
+from backend.features.friends import models as friends_models  # noqa: F401
 from backend.features.game_scores import models as game_scores_models  # noqa: F401
 from backend.features.plant_quiz import models as plant_quiz_models  # noqa: F401
 from backend.features.recipes import models as recipes_models  # noqa: F401

@@ -3,19 +3,30 @@ import { apiFetch } from './api'
 export type AccountStatus = 'pending' | 'approved' | 'denied'
 
 export interface Me {
+  id: number
   email: string
   display_name: string | null
+  nickname: string | null
+  avatar_color: string
   status: AccountStatus
   is_admin: boolean
 }
 
 export interface Account extends Me {
-  id: number
   created_at: string
 }
 
 export async function getMe(): Promise<Me> {
   const response = await apiFetch('/api/accounts/me')
+  return response.json()
+}
+
+export async function updateMe(updates: { nickname?: string | null; avatar_color?: string }): Promise<Me> {
+  const response = await apiFetch('/api/accounts/me', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
   return response.json()
 }
 

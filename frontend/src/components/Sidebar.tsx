@@ -1,4 +1,4 @@
-import { House, LogOut, Menu, Settings, X } from 'lucide-react'
+import { House, LogOut, Menu, Settings, User, X } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './AuthGate'
@@ -88,6 +88,16 @@ export default function Sidebar() {
         </div>
 
         <div className="flex flex-col gap-1 md:items-center md:gap-2">
+          <Link
+            to="/profile"
+            onClick={() => setIsOpen(false)}
+            aria-label="Profile"
+            title="Profile"
+            className={linkClassName}
+          >
+            <User aria-hidden="true" />
+            <span className="md:hidden">Profile</span>
+          </Link>
           {me.is_admin && (
             <Link
               to="/settings"

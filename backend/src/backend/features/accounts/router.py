@@ -9,6 +9,7 @@ from backend.features.accounts.schemas import (
     AccountRead,
     AccountUpdate,
     MeRead,
+    MeUpdate,
     TileAccessUpdate,
 )
 from backend.features.tiles.models import Tile
@@ -19,6 +20,20 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 @router.get("/me", response_model=MeRead)
 def get_me(account: AllowedAccount = Depends(get_or_create_account)) -> AllowedAccount:
     """Returns the caller's own allowlist status, creating a pending row on first sign-in."""
+    return account
+
+
+@router.patch("/me", response_model=MeRead)
+def update_me(
+    payload: MeUpdate,
+    account: AllowedAccount = Depends(get_or_create_account),
+    db: Session = Depends(get_db),
+) -> AllowedAccount:
+    """Lets the caller set their own nickname/avatar colour."""
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(account, field, value)
+    db.commit()
+    db.refresh(account)
     return account
 
 

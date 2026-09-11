@@ -7,6 +7,7 @@ import { apiScopes } from '../lib/msal'
 interface AuthContextValue {
   me: Me
   signOut: () => void
+  refreshMe: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -30,6 +31,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       .then(setMe)
       .catch(() => setError('Failed to load account status.'))
   }, [isAuthenticated])
+
+  function refreshMe() {
+    getMe()
+      .then(setMe)
+      .catch(() => {})
+  }
 
   function signIn() {
     instance.loginRedirect({ scopes: apiScopes })
@@ -86,5 +93,5 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     )
   }
 
-  return <AuthContext.Provider value={{ me, signOut }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ me, signOut, refreshMe }}>{children}</AuthContext.Provider>
 }

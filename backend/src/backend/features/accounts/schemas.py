@@ -10,6 +10,8 @@ class AccountRead(BaseModel):
     id: int
     email: str
     display_name: str | None
+    nickname: str | None
+    avatar_color: str
     status: AccountStatus
     is_admin: bool
     created_at: datetime.datetime
@@ -27,9 +29,29 @@ class TileAccessUpdate(BaseModel):
 
 
 class MeRead(BaseModel):
+    id: int
     email: str
     display_name: str | None
+    nickname: str | None
+    avatar_color: str
     status: AccountStatus
     is_admin: bool
+
+    model_config = {"from_attributes": True}
+
+
+class MeUpdate(BaseModel):
+    nickname: str | None = None
+    avatar_color: str | None = None
+
+
+class AccountSummary(BaseModel):
+    """Minimal public-facing account info, used by the friends/beer-bets features."""
+
+    id: int
+    email: str
+    display_name: str | None
+    nickname: str | None
+    avatar_color: str
 
     model_config = {"from_attributes": True}

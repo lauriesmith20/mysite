@@ -26,6 +26,9 @@ class AllowedAccount(Base):
         nullable=False,
     )
     is_admin: Mapped[bool] = mapped_column(default=False, nullable=False)
+    nickname: Mapped[str | None] = mapped_column(nullable=True)
+    # Hex colour used for the initials avatar (no persistent storage on Container Apps for uploads).
+    avatar_color: Mapped[str] = mapped_column(default="#66B2FF", nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         default=lambda: datetime.datetime.now(datetime.UTC), nullable=False
     )
