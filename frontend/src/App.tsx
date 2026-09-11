@@ -7,6 +7,8 @@ import HomePage from './pages/HomePage'
 import PlantQuizGamePage from './pages/PlantQuizGamePage'
 import PlantQuizLeaderboardsPage from './pages/PlantQuizLeaderboardsPage'
 import PlantQuizMenuPage from './pages/PlantQuizMenuPage'
+import RecipePage from './pages/RecipePage'
+import RecipesPage from './pages/RecipesPage'
 import SettingsPage from './pages/SettingsPage'
 
 function App() {
@@ -19,6 +21,8 @@ function App() {
         <Route path="/plant-quiz" element={<PlantQuizMenuPage />} />
         <Route path="/plant-quiz/leaderboards" element={<PlantQuizLeaderboardsPage />} />
         <Route path="/plant-quiz/:mode" element={<PlantQuizGamePage />} />
+        <Route path="/recipes" element={<RecipesPage />} />
+        <Route path="/recipes/:id" element={<RecipePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<ComingSoonPage />} />
       </Route>

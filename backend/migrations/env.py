@@ -10,6 +10,7 @@ from backend.database import Base
 from backend.features.accounts import models as accounts_models  # noqa: F401
 from backend.features.game_scores import models as game_scores_models  # noqa: F401
 from backend.features.plant_quiz import models as plant_quiz_models  # noqa: F401
+from backend.features.recipes import models as recipes_models  # noqa: F401
 from backend.features.tiles import models as tiles_models  # noqa: F401
 
 # this is the Alembic Config object, which provides
