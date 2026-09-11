@@ -1,4 +1,3 @@
-import { InteractionRequiredAuthError } from '@azure/msal-browser'
 import { LOCAL_USER } from './localAuth'
 import { apiScopes, msalInstance } from './msal'
 
@@ -11,9 +10,10 @@ async function getAccessToken(): Promise<string | null> {
     const result = await msalInstance.acquireTokenSilent({ scopes: apiScopes, account })
     return result.accessToken
   } catch (error) {
-    if (error instanceof InteractionRequiredAuthError) {
-      await msalInstance.acquireTokenRedirect({ scopes: apiScopes, account })
-    }
+    // Log so silent-acquisition failures (e.g. app registration misconfig, blocked third-party
+    // cookies) are visible in devtools instead of silently surfacing as a generic 401.
+    console.error('acquireTokenSilent failed, falling back to interactive redirect:', error)
+    await msalInstance.acquireTokenRedirect({ scopes: apiScopes, account })
     return null
   }
 }
