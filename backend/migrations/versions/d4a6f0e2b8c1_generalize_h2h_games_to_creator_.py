@@ -73,13 +73,23 @@ def upgrade() -> None:
         laurie_id = _laurie_id(conn)
         opponent_id = _opponent_id(conn, laurie_id)
 
+    # Plain add_column only — no batch_alter_table/rename/drop. Turso enforces foreign keys, and
+    # batch mode's rebuild-the-table strategy (drop + recreate) trips a FOREIGN KEY constraint
+    # failure there (h2h_game_score_history.game_id references h2h_games.id) even though the same
+    # migration runs fine against a local sqlite file (FKs aren't enforced there by default).
+    # laurie_score/maeve_score/player are left in place, unused, rather than risking that rebuild.
     op.add_column("h2h_games", sa.Column("creator_id", sa.Integer(), nullable=True))
     op.add_column("h2h_games", sa.Column("opponent_id", sa.Integer(), nullable=True))
+    op.add_column("h2h_games", sa.Column("creator_score", sa.Integer(), nullable=True))
+    op.add_column("h2h_games", sa.Column("opponent_score", sa.Integer(), nullable=True))
     op.add_column("h2h_game_score_history", sa.Column("player_id", sa.Integer(), nullable=True))
 
     if has_existing_games:
         conn.execute(
-            sa.text("UPDATE h2h_games SET creator_id = :laurie_id, opponent_id = :opponent_id"),
+            sa.text(
+                "UPDATE h2h_games SET creator_id = :laurie_id, opponent_id = :opponent_id, "
+                "creator_score = laurie_score, opponent_score = maeve_score"
+            ),
             {"laurie_id": laurie_id, "opponent_id": opponent_id},
         )
         conn.execute(
@@ -89,16 +99,8 @@ def upgrade() -> None:
             ),
             {"laurie_id": laurie_id, "opponent_id": opponent_id},
         )
-
-    with op.batch_alter_table("h2h_games") as batch_op:
-        batch_op.alter_column("creator_id", nullable=False)
-        batch_op.alter_column("opponent_id", nullable=False)
-        batch_op.alter_column("laurie_score", new_column_name="creator_score")
-        batch_op.alter_column("maeve_score", new_column_name="opponent_score")
-
-    with op.batch_alter_table("h2h_game_score_history") as batch_op:
-        batch_op.alter_column("player_id", nullable=False)
-        batch_op.drop_column("player")
+    else:
+        conn.execute(sa.text("UPDATE h2h_games SET creator_score = 0, opponent_score = 0"))
 
     conn.execute(sa.text("UPDATE tiles SET title = 'H2H Games' WHERE href = '/game-scores'"))
 
@@ -107,23 +109,12 @@ def downgrade() -> None:
     """Downgrade schema."""
     conn = op.get_bind()
 
-    op.add_column("h2h_game_score_history", sa.Column("player", sa.String(), nullable=True))
-    conn.execute(
-        sa.text(
-            "UPDATE h2h_game_score_history SET player = ("
-            "  SELECT CASE WHEN h.creator_id = h2h_game_score_history.player_id THEN 'laurie' ELSE 'maeve' END "
-            "  FROM h2h_games h WHERE h.id = h2h_game_score_history.game_id"
-            ")"
-        )
-    )
-    with op.batch_alter_table("h2h_game_score_history") as batch_op:
-        batch_op.alter_column("player", nullable=False)
-        batch_op.drop_column("player_id")
-
-    with op.batch_alter_table("h2h_games") as batch_op:
-        batch_op.alter_column("creator_score", new_column_name="laurie_score")
-        batch_op.alter_column("opponent_score", new_column_name="maeve_score")
-        batch_op.drop_column("creator_id")
-        batch_op.drop_column("opponent_id")
+    # Upgrade only ever added columns (never touched/dropped laurie_score/maeve_score/player), so
+    # downgrading is just dropping what was added.
+    op.drop_column("h2h_game_score_history", "player_id")
+    op.drop_column("h2h_games", "creator_id")
+    op.drop_column("h2h_games", "opponent_id")
+    op.drop_column("h2h_games", "creator_score")
+    op.drop_column("h2h_games", "opponent_score")
 
     conn.execute(sa.text("UPDATE tiles SET title = 'H2H: Maeve vs Laurie' WHERE href = '/game-scores'"))
