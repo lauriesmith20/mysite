@@ -12,10 +12,16 @@ import {
   type ScoreHistoryEntry,
 } from '../lib/gameScores'
 import EditGameModal from '../components/EditGameModal'
+import { useAuth } from '../components/AuthGate'
+
+function nameFor(account: { nickname: string | null; display_name: string | null; email: string }) {
+  return account.nickname?.trim() || account.display_name || account.email
+}
 
 export default function H2HGamePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { me } = useAuth()
   const [game, setGame] = useState<Game | null>(null)
   const [history, setHistory] = useState<ScoreHistoryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -29,11 +35,11 @@ export default function H2HGamePage() {
     if (id) getScoreHistory(Number(id)).then(setHistory)
   }, [id])
 
-  async function handleScore(player: 'laurie' | 'maeve') {
+  async function handleScore(playerId: number) {
     if (!id) return
     setError(null)
     try {
-      const updated = await updateScore(Number(id), player)
+      const updated = await updateScore(Number(id), playerId)
       setGame(updated)
       setHistory(await getScoreHistory(Number(id)))
     } catch {
@@ -97,10 +103,12 @@ export default function H2HGamePage() {
       {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
       <div className="grid grid-cols-2 gap-6">
         <div className="flex flex-col items-center gap-4">
-          <h2 className="text-lg font-semibold">Laurie</h2>
-          <p className="text-5xl font-bold">{game.laurie_score}</p>
+          <h2 className="text-lg font-semibold">
+            {game.creator.id === me.id ? 'You' : nameFor(game.creator)}
+          </h2>
+          <p className="text-5xl font-bold">{game.creator_score}</p>
           <button
-            onClick={() => handleScore('laurie')}
+            onClick={() => handleScore(game.creator.id)}
             disabled={locked}
             className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
           >
@@ -108,10 +116,12 @@ export default function H2HGamePage() {
           </button>
         </div>
         <div className="flex flex-col items-center gap-4">
-          <h2 className="text-lg font-semibold">Maeve</h2>
-          <p className="text-5xl font-bold">{game.maeve_score}</p>
+          <h2 className="text-lg font-semibold">
+            {game.opponent.id === me.id ? 'You' : nameFor(game.opponent)}
+          </h2>
+          <p className="text-5xl font-bold">{game.opponent_score}</p>
           <button
-            onClick={() => handleScore('maeve')}
+            onClick={() => handleScore(game.opponent.id)}
             disabled={locked}
             className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
           >
@@ -137,7 +147,8 @@ export default function H2HGamePage() {
                     <td className="px-4 py-2">{entry.changed_by}</td>
                     <td className="px-4 py-2">{new Date(entry.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2">
-                      {entry.player === 'laurie' ? 'Laurie' : 'Maeve'} {entry.delta >= 0 ? '+' : ''}
+                      {entry.player_id === game.creator.id ? nameFor(game.creator) : nameFor(game.opponent)}{' '}
+                      {entry.delta >= 0 ? '+' : ''}
                       {entry.delta} → {entry.resulting_score}
                     </td>
                   </tr>

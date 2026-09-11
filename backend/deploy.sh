@@ -136,6 +136,7 @@ info "Running 'alembic upgrade head' against Turso..."
 docker run --rm --platform linux/amd64 \
   -e "DATABASE_URL=${DATABASE_URL}" \
   -e "TURSO_AUTH_TOKEN=${TURSO_AUTH_TOKEN}" \
+  -e "H2H_OPPONENT_EMAIL=${H2H_OPPONENT_EMAIL:-}" \
   --entrypoint alembic \
   "$FULL_IMAGE" upgrade head
 

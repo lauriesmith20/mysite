@@ -13,6 +13,9 @@ from backend.features.accounts.schemas import (
     TileAccessUpdate,
 )
 from backend.features.tiles.models import Tile
+from backend.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -51,6 +54,7 @@ def update_account(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
     if payload.status is not None:
         account.status = payload.status
+        logger.info("Account %s status changed to %s", account.email, payload.status.value)
     if payload.is_admin is not None:
         account.is_admin = payload.is_admin
     db.commit()

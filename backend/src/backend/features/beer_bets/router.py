@@ -18,6 +18,9 @@ from backend.features.beer_bets.schemas import (
     CashOutCreate,
 )
 from backend.features.friends.models import Friendship, FriendshipStatus
+from backend.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/beer-bets", tags=["beer-bets"])
 
@@ -139,6 +142,7 @@ def create_bet(
     db.add(bet)
     db.commit()
     db.refresh(bet)
+    logger.info("Beer bet created: %s (stake=%d) by account %d vs %d", bet.title, bet.stake, account.id, payload.opponent_id)
     return _bet_read(bet, db)
 
 
@@ -195,6 +199,7 @@ def confirm_winner(
     bet.resolved_at = datetime.datetime.now(datetime.UTC)
     db.commit()
     db.refresh(bet)
+    logger.info("Beer bet %d resolved: winner=%d", bet.id, bet.winner_id)
     return _bet_read(bet, db)
 
 

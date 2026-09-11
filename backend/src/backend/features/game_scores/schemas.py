@@ -1,11 +1,13 @@
 """Pydantic request/response models for head-to-head game score tracking."""
 import datetime
-from typing import Literal
 
 from pydantic import BaseModel
 
+from backend.features.accounts.schemas import AccountSummary
+
 
 class GameCreate(BaseModel):
+    opponent_id: int
     name: str
     image_url: str | None = None
     is_daily: bool = False
@@ -17,16 +19,18 @@ class GameUpdate(BaseModel):
 
 
 class ScoreIncrement(BaseModel):
-    player: Literal["laurie", "maeve"]
+    player_id: int
     delta: int = 1
 
 
 class GameRead(BaseModel):
     id: int
+    creator: AccountSummary
+    opponent: AccountSummary
     name: str
     image_url: str | None
-    laurie_score: int
-    maeve_score: int
+    creator_score: int
+    opponent_score: int
     is_daily: bool
     last_updated: datetime.datetime | None
 
@@ -35,7 +39,7 @@ class GameRead(BaseModel):
 
 class ScoreHistoryRead(BaseModel):
     id: int
-    player: str
+    player_id: int
     delta: int
     resulting_score: int
     changed_by: str

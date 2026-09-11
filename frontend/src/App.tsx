@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import BeerBetsMenuPage from './pages/BeerBetsMenuPage'
 import BeerBetsPage from './pages/BeerBetsPage'
 import ComingSoonPage from './pages/ComingSoonPage'
+import GameScoresFriendPage from './pages/GameScoresFriendPage'
 import GameScoresPage from './pages/GameScoresPage'
 import H2HGamePage from './pages/H2HGamePage'
 import HomePage from './pages/HomePage'
@@ -20,6 +21,7 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/game-scores" element={<GameScoresPage />} />
+        <Route path="/game-scores/:friendId" element={<GameScoresFriendPage />} />
         <Route path="/h2h-game/:id" element={<H2HGamePage />} />
         <Route path="/plant-quiz" element={<PlantQuizMenuPage />} />
         <Route path="/plant-quiz/leaderboards" element={<PlantQuizLeaderboardsPage />} />

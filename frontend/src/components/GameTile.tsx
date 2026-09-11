@@ -1,7 +1,17 @@
 import { Link } from 'react-router-dom'
 import type { Game } from '../lib/gameScores'
+import { useAuth } from './AuthGate'
+
+function nameFor(account: { nickname: string | null; display_name: string | null; email: string }) {
+  return account.nickname?.trim() || account.display_name || account.email
+}
 
 export default function GameTile({ game }: { game: Game }) {
+  const { me } = useAuth()
+  const youAreCreator = game.creator.id === me.id
+  const leftLabel = youAreCreator ? 'You' : nameFor(game.creator)
+  const rightLabel = youAreCreator ? nameFor(game.opponent) : 'You'
+
   return (
     <Link
       to={`/h2h-game/${game.id}`}
@@ -24,7 +34,7 @@ export default function GameTile({ game }: { game: Game }) {
       <div className="flex flex-col gap-1 p-4">
         <h2 className="text-lg font-semibold">{game.name}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Laurie {game.laurie_score} – Maeve {game.maeve_score}
+          {leftLabel} {game.creator_score} – {rightLabel} {game.opponent_score}
         </p>
       </div>
     </Link>

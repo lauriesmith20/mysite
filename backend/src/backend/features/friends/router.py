@@ -16,6 +16,9 @@ from backend.features.friends.schemas import (
     FriendRequestCreate,
     FriendRequestRead,
 )
+from backend.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/friends", tags=["friends"])
 
@@ -158,6 +161,7 @@ def send_friend_request(
     db.add(friendship)
     db.commit()
     db.refresh(friendship)
+    logger.info("Friend request sent: %s -> account %d", account.email, payload.addressee_id)
     return _request_read(friendship, account)
 
 
@@ -179,6 +183,7 @@ def accept_friend_request(
     db.commit()
     requester = db.get(AllowedAccount, friendship.requester_id)
     assert requester is not None
+    logger.info("Friend request accepted: %s <-> %s", account.email, requester.email)
     return _friend_read(requester, friendship.id)
 
 

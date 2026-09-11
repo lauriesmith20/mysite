@@ -15,6 +15,9 @@ from sqlalchemy.orm import Session
 from backend.config import get_settings
 from backend.database import get_db
 from backend.features.accounts.models import AccountStatus, AllowedAccount
+from backend.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -23,6 +26,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 LOCAL_USERS: dict[str, dict[str, str]] = {
     "dummy": {"email": "dummy.user@example.com", "name": "Dummy User"},
     "dummy-admin": {"email": "dummy.admin@example.com", "name": "Dummy Admin"},
+    "maeve": {"email": "dummy.maeve@example.com", "name": "Maeve Cooper"},
 }
 
 
@@ -64,6 +68,7 @@ def get_current_claims(
             issuer=f"https://login.microsoftonline.com/{settings.azure_ad_tenant_id}/v2.0",
         )
     except jwt.PyJWTError as exc:
+        logger.warning("Rejected bearer token: %s", exc)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid token: {exc}") from exc
 
     return claims
@@ -90,6 +95,7 @@ def get_or_create_account(
         db.add(account)
         db.commit()
         db.refresh(account)
+        logger.info("New pending account created: %s", email)
     return account
 
 
@@ -98,6 +104,7 @@ def require_approved_account(
 ) -> AllowedAccount:
     """FastAPI dependency that gates access to accounts approved in the allowlist."""
     if account.status != AccountStatus.APPROVED:
+        logger.warning("Denied unapproved account %s (status=%s)", account.email, account.status.value)
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, f"Account not approved (status: {account.status.value})"
         )
