@@ -126,6 +126,21 @@ docker push "$FULL_IMAGE"
 
 success "Image pushed: ${FULL_IMAGE}"
 
+# ── 2b. Database migrations ───────────────────────────────────────────────────
+header "2b / Run database migrations"
+
+# Run against the just-pushed image so migrations always match the deployed code, and from
+# the host (not the Container App's own startup) so a bad migration fails the deploy before
+# any traffic reaches the new revision.
+info "Running 'alembic upgrade head' against Turso..."
+docker run --rm --platform linux/amd64 \
+  -e "DATABASE_URL=${DATABASE_URL}" \
+  -e "TURSO_AUTH_TOKEN=${TURSO_AUTH_TOKEN}" \
+  --entrypoint alembic \
+  "$FULL_IMAGE" upgrade head
+
+success "Migrations applied."
+
 # ── 3. Container Apps Environment ─────────────────────────────────────────────
 header "3 / Container Apps Environment"
 

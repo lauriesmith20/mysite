@@ -14,7 +14,9 @@ need.
 - Production DB is Turso (`TURSO_DATABASE_URL` in `backend/.env`), not the local
   `DATABASE_URL` (`sqlite:///./app.db`) used for dev — `backend/deploy.sh` handles this mapping,
   don't override `DATABASE_URL` manually when deploying.
-- Migrations run automatically on container start (`alembic upgrade head` in `backend/Dockerfile`'s
-  `CMD`) — no separate migration step needed when deploying.
+- Migrations run as a `backend/deploy.sh` step (`alembic upgrade head` against Turso, right after
+  the image is pushed and before the Container App is updated) — not on container start, so a bad
+  migration fails the deploy instead of crash-looping prod. No separate migration step needed
+  beyond running `deploy.sh`.
 - Frontend deploys automatically on push to `main` via GitHub Actions; backend deploys manually via
   `backend/deploy.sh`.

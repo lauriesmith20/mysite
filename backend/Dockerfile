@@ -23,4 +23,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000"]
+# Migrations run as a deploy.sh step (docker run --entrypoint alembic), not on every
+# container start — avoids adding a DB round-trip to every scale-to-zero cold start.
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

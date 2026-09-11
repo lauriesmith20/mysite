@@ -18,4 +18,4 @@ Review the generated file in `migrations/versions/` (autogenerate misses renames
 uv run alembic upgrade head
 ```
 
-New environments (fresh clone, fresh `app.db`) just need `uv run alembic upgrade head` to create the schema. The Docker image runs this automatically on container start.
+New environments (fresh clone, fresh `app.db`) just need `uv run alembic upgrade head` to create the schema. In production, `deploy.sh` runs this against Turso as a deploy step (not on container start).
