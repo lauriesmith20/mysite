@@ -168,6 +168,15 @@ else
   success "Container App created."
 fi
 
+# FQDN is known as soon as the app exists (create or update) — used to advertise the MCP
+# server's public resource URL. Override with PUBLIC_BASE_URL if you front this with a custom domain.
+DEFAULT_APP_URL=$(az containerapp show \
+  --name           "$APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query          "properties.configuration.ingress.fqdn" \
+  --output         tsv)
+PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-"https://${DEFAULT_APP_URL}"}"
+
 # Single atomic ARM PATCH — sets image + registry + env vars in one revision.
 # TURSO_AUTH_TOKEN is passed as a Container Apps secret, never as a plain env value.
 info "Applying image + config in one atomic update..."
@@ -200,7 +209,8 @@ az rest --method PATCH \
             { \"name\": \"CORS_ORIGINS\", \"value\": \"${CORS_ORIGINS}\" },
             { \"name\": \"AZURE_AD_TENANT_ID\", \"value\": \"${AZURE_AD_TENANT_ID}\" },
             { \"name\": \"AZURE_AD_CLIENT_ID\", \"value\": \"${AZURE_AD_CLIENT_ID}\" },
-            { \"name\": \"AZURE_AD_API_AUDIENCE\", \"value\": \"${AZURE_AD_API_AUDIENCE}\" }
+            { \"name\": \"AZURE_AD_API_AUDIENCE\", \"value\": \"${AZURE_AD_API_AUDIENCE}\" },
+            { \"name\": \"PUBLIC_BASE_URL\", \"value\": \"${PUBLIC_BASE_URL}\" }
           ]
         }],
         \"scale\": {

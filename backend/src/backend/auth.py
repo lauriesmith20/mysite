@@ -27,7 +27,7 @@ LOCAL_USERS: dict[str, dict[str, str]] = {
 
 
 @lru_cache
-def _get_jwk_client(tenant_id: str) -> PyJWKClient:
+def get_jwk_client(tenant_id: str) -> PyJWKClient:
     jwks_url = f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
     return PyJWKClient(jwks_url)
 
@@ -54,7 +54,7 @@ def get_current_claims(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing bearer token")
 
     try:
-        jwk_client = _get_jwk_client(settings.azure_ad_tenant_id)  # type: ignore[arg-type]
+        jwk_client = get_jwk_client(settings.azure_ad_tenant_id)  # type: ignore[arg-type]
         signing_key = jwk_client.get_signing_key_from_jwt(credentials.credentials)
         claims = jwt.decode(
             credentials.credentials,
@@ -69,7 +69,7 @@ def get_current_claims(
     return claims
 
 
-def _extract_email(claims: dict[str, Any]) -> str:
+def extract_email(claims: dict[str, Any]) -> str:
     email = claims.get("email") or claims.get("preferred_username")
     if not email:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token has no email claim")
@@ -81,7 +81,7 @@ def get_or_create_account(
     db: Session = Depends(get_db),
 ) -> AllowedAccount:
     """Looks up the caller's allowlist row, recording a pending one on first sign-in."""
-    email = _extract_email(claims)
+    email = extract_email(claims)
     account = db.query(AllowedAccount).filter(AllowedAccount.email == email).first()
     if account is None:
         account = AllowedAccount(

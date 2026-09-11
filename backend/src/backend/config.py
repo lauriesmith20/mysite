@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # environment == "local", regardless of this flag, so it can never be enabled in production.
     local_auth_bypass: bool = False
 
+    # Public URL this backend is reachable at (no trailing slash), used to advertise the MCP
+    # server's resource URL and to allow that host through MCP's DNS-rebinding protection.
+    # Leave unset locally; the MCP endpoint falls back to allowing any host when it's unset.
+    public_base_url: str | None = None
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
