@@ -7,6 +7,17 @@ from backend.config import get_settings
 from backend.database import SessionLocal
 from backend.features.accounts.models import AccountStatus, AllowedAccount
 
+_settings = get_settings()
+
+# No trailing slash: must exactly match the MCP server URL as entered in Claude's connector
+# settings (Claude's `resource` param is compared byte-for-byte against this).
+RESOURCE_URL = f"{_settings.public_base_url or 'http://127.0.0.1:8000'}/mcp"
+
+# Entra's v2 endpoint requires scopes to be fully qualified with an Application ID URI (a bare
+# "access_as_user" is rejected with invalid_scope) — RESOURCE_URL is registered as one, see
+# deploy.sh's identifierUris setup.
+SCOPE_NAME = f"{RESOURCE_URL}/access_as_user"
+
 
 class EntraTokenVerifier(TokenVerifier):
     """Validates the same Entra ID tokens `backend.auth` accepts, then checks the DB allowlist."""
@@ -40,4 +51,4 @@ class EntraTokenVerifier(TokenVerifier):
             account = db.query(AllowedAccount).filter(AllowedAccount.email == email).first()
             if account is None or account.status != AccountStatus.APPROVED:
                 return None
-            return AccessToken(token=token, client_id=email, scopes=["access_as_user"])
+            return AccessToken(token=token, client_id=email, scopes=[SCOPE_NAME])

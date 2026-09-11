@@ -12,13 +12,9 @@ from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 
 from backend.config import get_settings
-from backend.mcp.auth import EntraTokenVerifier
+from backend.mcp.auth import RESOURCE_URL, SCOPE_NAME, EntraTokenVerifier
 
 settings = get_settings()
-
-# No trailing slash: must exactly match the MCP server URL as entered in Claude's connector
-# settings (Claude's `resource` param is compared byte-for-byte against this).
-_resource_url = f"{settings.public_base_url or 'http://127.0.0.1:8000'}/mcp"
 
 mcp_server = MCPServer(
     "Personal Website",
@@ -30,8 +26,8 @@ mcp_server = MCPServer(
             # Placeholder so the server can still start with auth unconfigured, e.g. local dev.
             else "https://login.microsoftonline.com/consumers/v2.0"
         ),
-        resource_server_url=AnyHttpUrl(_resource_url),
-        required_scopes=["access_as_user"],
+        resource_server_url=AnyHttpUrl(RESOURCE_URL),
+        required_scopes=[SCOPE_NAME],
         # Entra's `aud` claim is the API's client ID, not this resource URL — verified separately
         # in EntraTokenVerifier, so skip the SDK's own resource-match check.
         validate_token_resource=False,
