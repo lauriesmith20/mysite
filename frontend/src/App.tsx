@@ -1,5 +1,9 @@
-import { Route, Routes } from 'react-router-dom'
+import { useIsAuthenticated } from '@azure/msal-react'
+import { lazy, Suspense } from 'react'
+import { Route, Routes, useLocation } from 'react-router-dom'
+import AuthGate from './components/AuthGate'
 import Layout from './components/Layout'
+import { LOCAL_USER } from './lib/localAuth'
 import BeerBetsMenuPage from './pages/BeerBetsMenuPage'
 import BeerBetsPage from './pages/BeerBetsPage'
 import ComingSoonPage from './pages/ComingSoonPage'
@@ -7,6 +11,7 @@ import GameScoresFriendPage from './pages/GameScoresFriendPage'
 import GameScoresPage from './pages/GameScoresPage'
 import H2HGamePage from './pages/H2HGamePage'
 import HomePage from './pages/HomePage'
+import GuestHomePage from './pages/GuestHomePage'
 import CookingModePage from './pages/CookingModePage'
 import PlantQuizGamePage from './pages/PlantQuizGamePage'
 import PlantQuizLeaderboardsPage from './pages/PlantQuizLeaderboardsPage'
@@ -16,7 +21,10 @@ import RecipePage from './pages/RecipePage'
 import RecipesPage from './pages/RecipesPage'
 import SettingsPage from './pages/SettingsPage'
 
-function App() {
+// Loaded on demand: pulls in the map libraries and country data.
+const CountryHopperPage = lazy(() => import('./pages/CountryHopperPage'))
+
+function SignedInRoutes() {
   return (
     <Routes>
       <Route path="/recipes/:id/cook" element={<CookingModePage />} />
@@ -36,6 +44,35 @@ function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<ComingSoonPage />} />
       </Route>
+    </Routes>
+  )
+}
+
+// Signed-out visitors get the guest home page at "/"; every other route asks them to sign in.
+function Shell() {
+  const signedIn = useIsAuthenticated() || Boolean(LOCAL_USER)
+  const { pathname } = useLocation()
+  if (!signedIn && pathname === '/') return <GuestHomePage />
+  return (
+    <AuthGate>
+      <SignedInRoutes />
+    </AuthGate>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      {/* Public: no sign-in required, so this link can be shared with anyone. */}
+      <Route
+        path="/country-hopper"
+        element={
+          <Suspense fallback={<div className="p-12 text-center text-(--soft)">Loading…</div>}>
+            <CountryHopperPage />
+          </Suspense>
+        }
+      />
+      <Route path="/*" element={<Shell />} />
     </Routes>
   )
 }

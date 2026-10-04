@@ -4,7 +4,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App.tsx'
-import AuthGate from './components/AuthGate.tsx'
 import './index.css'
 import { msalInstance } from './lib/msal'
 
@@ -33,14 +32,13 @@ async function bootstrap() {
   }
 
   // HashRouter avoids needing server-side rewrites for client-side routes on GitHub Pages.
+  // Sign-in is enforced inside <App /> per route, so public pages can sit outside the AuthGate.
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <MsalProvider instance={msalInstance}>
-        <AuthGate>
-          <HashRouter>
-            <App />
-          </HashRouter>
-        </AuthGate>
+        <HashRouter>
+          <App />
+        </HashRouter>
       </MsalProvider>
     </StrictMode>,
   )

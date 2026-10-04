@@ -7,6 +7,7 @@ const badges: Record<string, string> = {
   sprout: 'Daily question',
   'chef-hat': "What's for dinner?",
   beer: "Who's buying?",
+  route: 'Fewest borders',
 }
 
 export default function TileComponent({ tile }: { tile: Tile }) {

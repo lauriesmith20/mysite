@@ -41,7 +41,7 @@ export default function HomePage() {
       {loading ? (
         <p className="mt-8 text-(--soft)">Loading…</p>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3.5 md:mt-10 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] md:gap-6">
+        <div className="mt-4 grid grid-cols-2 gap-3.5 md:mt-10 md:grid-cols-[repeat(auto-fill,minmax(230px,1fr))] md:gap-6">
           {visible.map((tile) => (
             <Tile key={tile.id} tile={tile} />
           ))}

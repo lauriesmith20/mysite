@@ -7,6 +7,7 @@ class TileCreate(BaseModel):
     href: str
     color: str
     icon: str | None = None
+    is_public: bool = False
 
 
 class TileRead(BaseModel):
@@ -15,5 +16,6 @@ class TileRead(BaseModel):
     href: str
     color: str
     icon: str | None
+    is_public: bool
 
     model_config = {"from_attributes": True}
