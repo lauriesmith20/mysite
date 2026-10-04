@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import BackLink from '../components/BackLink'
+import Page from '../shared/layout/Page'
 import NewGameModal from '../components/NewGameModal'
-import { useAuth } from '../components/AuthGate'
+import { useAuth } from '../shared/auth/AuthGate'
 import { listFriends, type Friend } from '../lib/friends'
 import { createGame, listGamesWithFriend, type Game } from '../lib/gameScores'
 
@@ -70,11 +70,8 @@ export default function GameScoresFriendPage() {
     totalMine === totalTheirs ? 'All square' : totalMine > totalTheirs ? 'You lead' : `${friendName} leads`
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-10 pt-1 md:pt-6">
-      <BackLink to="/game-scores" label="Back to friends" />
-      <h1 className="mt-2 text-4xl font-extrabold leading-[1.05] tracking-tight">Rivalry</h1>
-
-      <section className="mt-4 flex flex-col gap-3 rounded-[28px] bg-(--card) p-5 shadow-(--card-shadow)">
+    <Page title="Rivalry" back={{ to: '/game-scores', label: 'Back to friends' }}>
+      <section className="flex flex-col gap-3 rounded-[28px] bg-(--card) p-5 shadow-(--card-shadow)">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
             <span
@@ -161,6 +158,6 @@ export default function GameScoresFriendPage() {
       </button>
 
       {showModal && <NewGameModal onClose={() => setShowModal(false)} onCreate={handleAddGame} />}
-    </main>
+    </Page>
   )
 }

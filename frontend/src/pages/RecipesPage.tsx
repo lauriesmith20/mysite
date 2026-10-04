@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Page from '../shared/layout/Page'
 import RecipeTile from '../components/RecipeTile'
 import { listRecipes, type Recipe } from '../lib/recipes'
 
@@ -13,8 +14,7 @@ export default function RecipesPage() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-4xl px-6 pb-10 pt-1 md:pt-6">
-      <h1 className="mb-8 text-3xl font-bold">Recipes</h1>
+    <Page title="Recipes" width="wide">
       {loading ? (
         <p className="text-gray-500 dark:text-gray-400">Loading…</p>
       ) : recipes.length === 0 ? (
@@ -26,6 +26,6 @@ export default function RecipesPage() {
           ))}
         </div>
       )}
-    </main>
+    </Page>
   )
 }

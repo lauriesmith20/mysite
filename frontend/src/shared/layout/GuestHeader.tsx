@@ -1,7 +1,7 @@
 import { useMsal } from '@azure/msal-react'
 import { Moon, Sun } from 'lucide-react'
-import { apiScopes } from '../lib/msal'
-import { useTheme } from '../lib/theme'
+import { apiScopes } from '../../lib/msal'
+import { useTheme } from '../../lib/theme'
 
 // Top bar for signed-out visitors (the signed-in equivalent is Sidebar).
 export default function GuestHeader() {

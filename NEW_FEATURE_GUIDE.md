@@ -50,7 +50,10 @@ Tiles live in the `tiles` table, not in frontend code — create one via `POST /
 
 - Add an API client under `frontend/src/lib/<name>.ts` (thin wrapper around `apiFetch`, see
   `frontend/src/lib/gameScores.ts` for the pattern) — skip if the feature has no backend.
-- Add page(s) under `frontend/src/pages/`.
+- Add page(s) under `frontend/src/pages/`. Every page renders inside `<Page>` from
+  `frontend/src/shared/layout/Page.tsx` (it owns `<main>`, spacing, title and actions). Top-level pages
+  (tile destinations) pass no `back`; pages two levels deep pass `back={{ to, label }}` for an inline
+  arrow next to the title. `npm run lint` enforces this, and that `shared/` never imports feature code.
 - Register route(s) in [frontend/src/App.tsx](frontend/src/App.tsx), matching the tile's `href`.
 - Reuse `frontend/src/components/` (`Layout`, modals, etc.) where it fits; don't force shared
   components onto a feature that doesn't need them.

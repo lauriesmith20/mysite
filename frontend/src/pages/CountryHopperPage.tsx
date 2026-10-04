@@ -1,6 +1,6 @@
 import { ArrowLeftRight, Minus, Plus } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import BackLink from '../components/BackLink'
+import Page from '../shared/layout/Page'
 import {
   loadWorld,
   MAP_HEIGHT,
@@ -254,14 +254,13 @@ export default function CountryHopperPage() {
   const headline = result ? `${result.borders} border${result.borders === 1 ? '' : 's'} to cross` : ''
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-2.5 px-4 pb-8 pt-1 md:gap-3 md:px-5 md:pt-6">
-      <BackLink to="/" label="Back to home" />
-      <h1 className="-mt-1 truncate text-3xl font-extrabold leading-tight tracking-tight md:text-4xl">
-        Country Hopper
-      </h1>
-      <p className="-mt-1 hidden text-sm text-(--soft) md:block">
-        Pick two countries on the map and see the fewest land borders between them.
-      </p>
+    <Page
+      title="Country Hopper"
+      subtitle="Pick two countries on the map and see the fewest land borders between them."
+      subtitleClassName="hidden text-sm md:block"
+      width="wide"
+      contentClassName="flex flex-col gap-2.5 md:gap-3"
+    >
 
       <div className="flex items-center gap-2">
         <label className="flex min-w-0 flex-1 flex-col rounded-[18px] px-3.5 py-2 text-[#1b1220]" style={{ backgroundColor: FROM_COLOR }}>
@@ -435,6 +434,6 @@ export default function CountryHopperPage() {
       >
         Clear selection
       </button>
-    </main>
+    </Page>
   )
 }

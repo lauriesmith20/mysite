@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Beer } from 'lucide-react'
 import { useParams } from 'react-router-dom'
-import BackLink from '../components/BackLink'
+import Page from '../shared/layout/Page'
 import CashOutModal from '../components/CashOutModal'
 import NewBetModal from '../components/NewBetModal'
-import { useAuth } from '../components/AuthGate'
+import { useAuth } from '../shared/auth/AuthGate'
 import {
   cancelBet,
   cashOut,
@@ -109,9 +109,9 @@ export default function BeerBetsPage() {
 
   if (loading || !friend) {
     return (
-      <main className="mx-auto max-w-2xl px-5 pb-10 pt-1 md:pt-6 text-center">
-        <p className="text-(--soft)">Loading…</p>
-      </main>
+      <Page back={{ to: '/beer-bets', label: 'Back to friends' }}>
+        <p className="text-center text-(--soft)">Loading…</p>
+      </Page>
     )
   }
 
@@ -123,11 +123,12 @@ export default function BeerBetsPage() {
   const beers = (n: number) => `${n} beer${n === 1 ? '' : 's'}`
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3.5 px-5 pb-10 pt-1 md:pt-6">
-      <BackLink to="/beer-bets" label="Back to friends" />
-
-      <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight">Beer Bets</h1>
-      <p className="-mt-2 text-sm text-(--soft)">vs {friendName}</p>
+    <Page
+      title="Beer Bets"
+      subtitle={`vs ${friendName}`}
+      back={{ to: '/beer-bets', label: 'Back to friends' }}
+      contentClassName="flex flex-col gap-3.5"
+    >
 
       {summary && (
         <div className="flex items-center justify-between rounded-[22px] bg-[#F2C85A] px-[18px] py-4 text-[#2A2006]">
@@ -343,6 +344,6 @@ export default function BeerBetsPage() {
       {showCashOutModal && (
         <CashOutModal friendName={friendName} onClose={() => setShowCashOutModal(false)} onCashOut={handleCashOut} />
       )}
-    </main>
+    </Page>
   )
 }

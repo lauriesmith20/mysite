@@ -1,10 +1,9 @@
 import { useIsAuthenticated } from '@azure/msal-react'
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
-import AuthGate from './components/AuthGate'
-import GuestHeader from './components/GuestHeader'
-import Layout from './components/Layout'
-import Sidebar from './components/Sidebar'
+import AuthGate from './shared/auth/AuthGate'
+import AppLayout from './shared/layout/AppLayout'
+import PublicLayout from './shared/layout/PublicLayout'
 import { LOCAL_USER } from './lib/localAuth'
 import BeerBetsMenuPage from './pages/BeerBetsMenuPage'
 import BeerBetsPage from './pages/BeerBetsPage'
@@ -30,7 +29,7 @@ function SignedInRoutes() {
   return (
     <Routes>
       <Route path="/recipes/:id/cook" element={<CookingModePage />} />
-      <Route element={<Layout />}>
+      <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/game-scores" element={<GameScoresPage />} />
         <Route path="/game-scores/:friendId" element={<GameScoresFriendPage />} />
@@ -47,27 +46,6 @@ function SignedInRoutes() {
         <Route path="*" element={<ComingSoonPage />} />
       </Route>
     </Routes>
-  )
-}
-
-// Public pages share the normal header: the full nav when signed in, a sign-in bar otherwise.
-function PublicLayout({ children }: { children: ReactNode }) {
-  const signedIn = useIsAuthenticated() || Boolean(LOCAL_USER)
-  if (!signedIn) {
-    return (
-      <div className="min-h-screen">
-        <GuestHeader />
-        {children}
-      </div>
-    )
-  }
-  return (
-    <AuthGate>
-      <div className="min-h-screen">
-        <Sidebar />
-        {children}
-      </div>
-    </AuthGate>
   )
 }
 

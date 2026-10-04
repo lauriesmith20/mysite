@@ -4,5 +4,58 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      // Feature pages render inside shared/layout/Page, which owns <main>, the title and the
+      // back arrow. Root pages (home, cooking mode) are the only exceptions.
+      "files": ["src/pages/**"],
+      "rules": {
+        "react/forbid-elements": [
+          "error",
+          { "forbid": [{ "element": "main", "message": "Wrap the page in <Page> from shared/layout/Page." }] }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "lucide-react",
+                "importNames": ["ArrowLeft"],
+                "message": "Use the `back` prop on <Page> for 2nd-level pages; top-level pages have no back link."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["**/shared/layout/BackLink", "**/shared/layout/Sidebar", "**/shared/layout/GuestHeader", "**/shared/layout/AppLayout", "**/shared/layout/PublicLayout"],
+                "message": "Layout chrome is wired up in App.tsx; pages only use <Page>."
+              },
+              {
+                "group": ["**/pages/*", "./*Page"],
+                "message": "Pages must not import other pages. Move shared code into shared/ or components/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/pages/HomePage.tsx", "src/pages/GuestHomePage.tsx", "src/pages/CookingModePage.tsx"],
+      "rules": { "react/forbid-elements": "off", "no-restricted-imports": "off" }
+    },
+    {
+      // shared/ is the foundation: it must never depend on feature code.
+      "files": ["src/shared/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              { "group": ["**/pages/**", "**/components/**"], "message": "shared/ must not import from feature code (pages/, components/)." }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

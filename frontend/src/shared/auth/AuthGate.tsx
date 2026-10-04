@@ -1,8 +1,8 @@
 import { useIsAuthenticated, useMsal } from '@azure/msal-react'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getMe, type Me } from '../lib/accounts'
-import { LOCAL_USER } from '../lib/localAuth'
-import { apiScopes } from '../lib/msal'
+import { getMe, type Me } from '../../lib/accounts'
+import { LOCAL_USER } from '../../lib/localAuth'
+import { apiScopes } from '../../lib/msal'
 
 interface AuthContextValue {
   me: Me

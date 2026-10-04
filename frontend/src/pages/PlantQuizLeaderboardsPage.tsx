@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import Page from '../shared/layout/Page'
 import {
   getBigLeaderboard,
   getLeaderboard,
@@ -22,16 +21,7 @@ export default function PlantQuizLeaderboardsPage() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
-      <Link
-        to="/plant-quiz"
-        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Quiz menu
-      </Link>
-      <h1 className="mb-8 text-3xl font-bold">🏅 Leaderboards</h1>
-
+    <Page title="🏅 Leaderboards" back={{ to: '/plant-quiz', label: 'Back to Plant Quiz' }}>
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold">Normal Quiz (avg / 10)</h2>
         {normal.length === 0 ? (
@@ -87,6 +77,6 @@ export default function PlantQuizLeaderboardsPage() {
           </table>
         )}
       </section>
-    </main>
+    </Page>
   )
 }

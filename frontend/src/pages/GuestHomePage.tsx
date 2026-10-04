@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import GuestHeader from '../components/GuestHeader'
+import GuestHeader from '../shared/layout/GuestHeader'
 import Tile from '../components/Tile'
 import { listPublicTiles, type Tile as TileData } from '../lib/tiles'
 

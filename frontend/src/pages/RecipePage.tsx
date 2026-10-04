@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChefHat, Trash2 } from 'lucide-react'
+import Page from '../shared/layout/Page'
+import { ChefHat, Trash2 } from 'lucide-react'
 import { deleteRecipe, getRecipe, updateRecipeNotes, type Recipe } from '../lib/recipes'
 
 export default function RecipePage() {
@@ -36,31 +37,26 @@ export default function RecipePage() {
 
   if (!recipe) {
     return (
-      <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Loading…</p>
-      </main>
+      <Page back={{ to: '/recipes', label: 'Back to recipes' }}>
+        <p className="text-center text-gray-500 dark:text-gray-400">Loading…</p>
+      </Page>
     )
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
-      <div className="mb-6 flex items-center justify-between">
-        <Link
-          to="/recipes"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to recipes
-        </Link>
+    <Page
+      title={recipe.title}
+      back={{ to: '/recipes', label: 'Back to recipes' }}
+      actions={
         <button
           onClick={handleDelete}
           aria-label="Delete recipe"
-          className="text-gray-400 transition hover:text-red-600 dark:hover:text-red-400"
+          className="p-2 text-gray-400 transition hover:text-red-600 dark:hover:text-red-400"
         >
           <Trash2 className="h-5 w-5" aria-hidden="true" />
         </button>
-      </div>
-
+      }
+    >
       {recipe.image_url && (
         <img
           src={recipe.image_url}
@@ -68,7 +64,6 @@ export default function RecipePage() {
           className="mb-6 h-56 w-full rounded-xl object-cover"
         />
       )}
-      <h1 className="mb-2 text-3xl font-bold">{recipe.title}</h1>
       <p className="mb-2 text-gray-600 dark:text-gray-300">{recipe.description}</p>
       <div className="mb-8 flex flex-wrap items-center gap-2">
         {recipe.servings != null && (
@@ -129,6 +124,6 @@ export default function RecipePage() {
           {saving ? 'Saving…' : 'Save notes'}
         </button>
       </section>
-    </main>
+    </Page>
   )
 }

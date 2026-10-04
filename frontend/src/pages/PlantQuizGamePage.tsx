@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import Page from '../shared/layout/Page'
+import { Loader2 } from 'lucide-react'
 import {
   getBigLeaderboard,
   getLeaderboard,
@@ -146,27 +147,17 @@ export default function PlantQuizGamePage() {
 
   if (screen === 'loading') {
     return (
-      <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Loading…</p>
-      </main>
+      <Page back={{ to: '/plant-quiz', label: 'Back to Plant Quiz' }}>
+        <p className="text-center text-gray-500 dark:text-gray-400">Loading…</p>
+      </Page>
     )
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
-      <div className="mb-6 flex items-center justify-between">
-        <Link
-          to="/plant-quiz"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Quiz menu
-        </Link>
-        <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-          {isBig ? 'The Big Quiz™️' : 'Normal Quiz'}
-        </span>
-      </div>
-
+    <Page
+      title={isBig ? 'The Big Quiz™️' : 'Normal Quiz'}
+      back={{ to: '/plant-quiz', label: 'Back to Plant Quiz' }}
+    >
       {screen === 'quiz' && current && (
         <div>
           <div className="mb-4 flex items-center justify-between">
@@ -287,6 +278,6 @@ export default function PlantQuizGamePage() {
           )}
         </div>
       )}
-    </main>
+    </Page>
   )
 }

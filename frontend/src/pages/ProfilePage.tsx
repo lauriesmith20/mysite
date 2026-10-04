@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import Avatar from '../components/Avatar'
-import { useAuth } from '../components/AuthGate'
+import Page from '../shared/layout/Page'
+import { useAuth } from '../shared/auth/AuthGate'
 import { updateMe } from '../lib/accounts'
 import {
   acceptFriendRequest,
@@ -88,9 +89,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-10 pt-1 md:pt-6 md:px-6">
-      <h1 className="mb-8 text-3xl font-bold">Profile</h1>
-
+    <Page title="Profile" width="medium">
       <div className="mb-6 flex gap-2 border-b border-gray-200 dark:border-gray-800">
         {(['profile', 'friends', 'requests'] as Tab[]).map((t) => (
           <button
@@ -271,6 +270,6 @@ export default function ProfilePage() {
           )}
         </div>
       )}
-    </main>
+    </Page>
   )
 }

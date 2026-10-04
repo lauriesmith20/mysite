@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import EditAccessModal from '../components/EditAccessModal'
+import Page from '../shared/layout/Page'
 import {
   getAllTileAccess,
   getMe,
@@ -75,9 +76,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 pb-10 pt-1 md:pt-6 md:px-6">
-      <h1 className="mb-8 text-3xl font-bold">Settings</h1>
-
+    <Page title="Settings" width="wide">
       <section>
         <h2 className="mb-4 text-xl font-semibold">Users</h2>
         {error && <p className="text-red-600">{error}</p>}
@@ -164,6 +163,6 @@ export default function SettingsPage() {
           onSave={handleSaveAccess}
         />
       )}
-    </main>
+    </Page>
   )
 }

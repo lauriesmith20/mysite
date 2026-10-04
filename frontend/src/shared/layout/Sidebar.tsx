@@ -1,9 +1,9 @@
 import { House, LogOut, Menu, Moon, Settings, Sun, User, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { useAuth } from './AuthGate'
-import { listTiles, type Tile } from '../lib/tiles'
-import { useTheme } from '../lib/theme'
+import { useAuth } from '../auth/AuthGate'
+import { listTiles, type Tile } from '../../lib/tiles'
+import { useTheme } from '../../lib/theme'
 
 const iconButton =
   'flex h-11 w-11 items-center justify-center rounded-full bg-(--chip) text-(--ink) transition hover:brightness-95'

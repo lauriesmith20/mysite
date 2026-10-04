@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import Page from '../shared/layout/Page'
+import { Settings } from 'lucide-react'
 import {
   deleteGame,
   getGame,
@@ -12,7 +13,7 @@ import {
   type ScoreHistoryEntry,
 } from '../lib/gameScores'
 import EditGameModal from '../components/EditGameModal'
-import { useAuth } from '../components/AuthGate'
+import { useAuth } from '../shared/auth/AuthGate'
 
 function nameFor(account: { nickname: string | null; display_name: string | null; email: string }) {
   return account.nickname?.trim() || account.display_name || account.email
@@ -61,9 +62,9 @@ export default function H2HGamePage() {
 
   if (!game) {
     return (
-      <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Loading…</p>
-      </main>
+      <Page back={{ to: '/game-scores', label: 'Back to games' }}>
+        <p className="text-center text-gray-500 dark:text-gray-400">Loading…</p>
+      </Page>
     )
   }
 
@@ -71,23 +72,20 @@ export default function H2HGamePage() {
   const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
 
   return (
-    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
-      <div className="mb-6 flex items-center justify-between">
-        <Link
-          to={`/game-scores/${friendId}`}
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to games
-        </Link>
+    <Page
+      title={game.name}
+      back={{ to: `/game-scores/${friendId}`, label: 'Back to games' }}
+      actions={
         <button
           onClick={() => setEditing(true)}
           aria-label="Edit game"
-          className="text-gray-400 transition hover:text-gray-900 dark:hover:text-gray-100"
+          className="p-2 text-gray-400 transition hover:text-gray-900 dark:hover:text-gray-100"
         >
           <Settings className="h-5 w-5" aria-hidden="true" />
         </button>
-      </div>
+      }
+      contentClassName="text-center"
+    >
       {game.image_url && (
         <img
           src={game.image_url}
@@ -95,7 +93,6 @@ export default function H2HGamePage() {
           className="mx-auto mb-6 h-40 w-40 rounded-xl object-cover"
         />
       )}
-      <h1 className="mb-2 text-3xl font-bold">{game.name}</h1>
       {game.is_daily && (
         <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
           {locked ? 'Already played today. Come back tomorrow!' : 'Daily game — one update per day'}
@@ -167,7 +164,7 @@ export default function H2HGamePage() {
           onDelete={handleDelete}
         />
       )}
-    </main>
+    </Page>
   )
 }
 

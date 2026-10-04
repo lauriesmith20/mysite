@@ -1,20 +1,12 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import Page from '../shared/layout/Page'
 
 export default function PlantQuizMenuPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
-      <Link
-        to="/"
-        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back home
-      </Link>
-      <h1 className="mb-2 text-3xl font-bold">🪴 Plant Quiz</h1>
-      <p className="mb-8 text-gray-500 dark:text-gray-400">
-        Botanical illustrations from Köhler's Medizinal-Pflanzen (1887) — can you name them?
-      </p>
+    <Page
+      title="🪴 Plant Quiz"
+      subtitle="Botanical illustrations from Köhler's Medizinal-Pflanzen (1887) — can you name them?"
+    >
       <div className="flex flex-col gap-4">
         <Link
           to="/plant-quiz/normal"
@@ -38,6 +30,6 @@ export default function PlantQuizMenuPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">See how you stack up.</p>
         </Link>
       </div>
-    </main>
+    </Page>
   )
 }

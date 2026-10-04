@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import Page from '../shared/layout/Page'
 import Avatar from '../components/Avatar'
 import { listFriends, type Friend } from '../lib/friends'
 
@@ -19,17 +19,10 @@ export default function BeerBetsMenuPage() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
-      <Link
-        to="/"
-        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back home
-      </Link>
-      <h1 className="mb-2 text-3xl font-bold">🍺 Beer Bets</h1>
-      <p className="mb-8 text-gray-500 dark:text-gray-400">Pick who you're betting against.</p>
-
+    <Page
+      title="🍺 Beer Bets"
+      subtitle="Pick who you're betting against."
+    >
       {loading ? (
         <p className="text-gray-500 dark:text-gray-400">Loading…</p>
       ) : friends.length === 0 ? (
@@ -54,6 +47,6 @@ export default function BeerBetsMenuPage() {
           ))}
         </div>
       )}
-    </main>
+    </Page>
   )
 }

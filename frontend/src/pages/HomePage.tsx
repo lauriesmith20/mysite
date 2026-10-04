@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useAuth } from '../components/AuthGate'
+import { useAuth } from '../shared/auth/AuthGate'
 import Tile from '../components/Tile'
 import { listTiles, type Tile as TileData } from '../lib/tiles'
 
