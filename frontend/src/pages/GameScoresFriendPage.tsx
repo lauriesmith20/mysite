@@ -75,8 +75,8 @@ export default function GameScoresFriendPage() {
       <h1 className="mt-2 text-4xl font-extrabold leading-[1.05] tracking-tight">Rivalry</h1>
 
       <section className="mt-4 flex flex-col gap-3 rounded-[28px] bg-(--card) p-5 shadow-(--card-shadow)">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
             <span
               className="flex h-12 w-12 items-center justify-center rounded-full text-[22px] font-extrabold text-[#1b1220]"
               style={{ backgroundColor: ME_COLOR }}
@@ -84,13 +84,12 @@ export default function GameScoresFriendPage() {
             >
               {(me.nickname || me.display_name || 'Y')[0]?.toUpperCase()}
             </span>
-            <span className="text-[15px] font-extrabold">You</span>
+            <span className="max-w-full truncate text-[15px] font-extrabold">You</span>
           </div>
-          <div className="text-4xl font-extrabold leading-none tracking-tight">
+          <div className="shrink-0 whitespace-nowrap text-4xl font-extrabold leading-none tracking-tight">
             {totalMine} <span className="font-normal text-(--soft)">–</span> {totalTheirs}
           </div>
-          <div className="flex items-center gap-2.5">
-            <span className="max-w-20 truncate text-[15px] font-extrabold">{friendName}</span>
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
             <span
               className="flex h-12 w-12 items-center justify-center rounded-full text-[22px] font-extrabold text-white"
               style={{ backgroundColor: FRIEND_COLOR }}
@@ -98,6 +97,7 @@ export default function GameScoresFriendPage() {
             >
               {friendName[0]?.toUpperCase()}
             </span>
+            <span className="max-w-full truncate text-[15px] font-extrabold">{friendName}</span>
           </div>
         </div>
         <div className="flex h-3 gap-[3px] overflow-hidden rounded-md">
