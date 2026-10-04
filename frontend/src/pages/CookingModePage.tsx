@@ -175,7 +175,7 @@ export default function CookingModePage() {
   }
 
   if (!recipe) {
-    return <main className="px-5 py-12 text-center text-(--soft)">Loading…</main>
+    return <main className="px-5 pb-10 pt-1 md:pt-6 text-center text-(--soft)">Loading…</main>
   }
 
   const last = step === recipe.steps.length - 1

@@ -1,8 +1,10 @@
 import { useIsAuthenticated } from '@azure/msal-react'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import AuthGate from './components/AuthGate'
+import GuestHeader from './components/GuestHeader'
 import Layout from './components/Layout'
+import Sidebar from './components/Sidebar'
 import { LOCAL_USER } from './lib/localAuth'
 import BeerBetsMenuPage from './pages/BeerBetsMenuPage'
 import BeerBetsPage from './pages/BeerBetsPage'
@@ -48,6 +50,27 @@ function SignedInRoutes() {
   )
 }
 
+// Public pages share the normal header: the full nav when signed in, a sign-in bar otherwise.
+function PublicLayout({ children }: { children: ReactNode }) {
+  const signedIn = useIsAuthenticated() || Boolean(LOCAL_USER)
+  if (!signedIn) {
+    return (
+      <div className="min-h-screen">
+        <GuestHeader />
+        {children}
+      </div>
+    )
+  }
+  return (
+    <AuthGate>
+      <div className="min-h-screen">
+        <Sidebar />
+        {children}
+      </div>
+    </AuthGate>
+  )
+}
+
 // Signed-out visitors get the guest home page at "/"; every other route asks them to sign in.
 function Shell() {
   const signedIn = useIsAuthenticated() || Boolean(LOCAL_USER)
@@ -67,9 +90,11 @@ function App() {
       <Route
         path="/country-hopper"
         element={
-          <Suspense fallback={<div className="p-12 text-center text-(--soft)">Loading…</div>}>
-            <CountryHopperPage />
-          </Suspense>
+          <PublicLayout>
+            <Suspense fallback={<div className="p-12 text-center text-(--soft)">Loading…</div>}>
+              <CountryHopperPage />
+            </Suspense>
+          </PublicLayout>
         }
       />
       <Route path="/*" element={<Shell />} />

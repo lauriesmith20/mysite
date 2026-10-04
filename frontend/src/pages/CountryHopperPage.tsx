@@ -1,7 +1,6 @@
-import { useIsAuthenticated } from '@azure/msal-react'
-import { ArrowLeft, ArrowLeftRight, Minus, Moon, Plus, Sun } from 'lucide-react'
+import { ArrowLeftRight, Minus, Plus } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import BackLink from '../components/BackLink'
 import {
   loadWorld,
   MAP_HEIGHT,
@@ -10,8 +9,6 @@ import {
   type Country,
   type World,
 } from '../lib/countryGraph'
-import { LOCAL_USER } from '../lib/localAuth'
-import { useTheme } from '../lib/theme'
 
 const FROM_COLOR = '#EC4060'
 const TO_COLOR = '#4A5BE0'
@@ -96,8 +93,6 @@ const roundButton =
   'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-(--chip) text-(--ink) transition active:scale-[0.94]'
 
 export default function CountryHopperPage() {
-  const { dark, toggle } = useTheme()
-  const signedIn = useIsAuthenticated() || Boolean(LOCAL_USER)
   const [world, setWorld] = useState<World | null>(null)
   const [error, setError] = useState(false)
   const [from, setFrom] = useState<number | null>(null)
@@ -259,24 +254,11 @@ export default function CountryHopperPage() {
   const headline = result ? `${result.borders} border${result.borders === 1 ? '' : 's'} to cross` : ''
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-2.5 px-4 pb-8 pt-2 md:gap-3 md:px-5 md:pt-4">
-      <div className="flex items-center gap-2">
-        {signedIn && (
-          <Link
-            to="/"
-            aria-label="Back to home"
-            className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-(--ink) hover:bg-(--chip)"
-          >
-            <ArrowLeft size={26} aria-hidden="true" />
-          </Link>
-        )}
-        <h1 className="min-w-0 flex-1 truncate text-3xl font-extrabold leading-tight tracking-tight md:text-4xl">
-          Country Hopper
-        </h1>
-        <button type="button" aria-label="Toggle dark mode" onClick={toggle} className={roundButton}>
-          {dark ? <Sun size={22} aria-hidden="true" /> : <Moon size={22} aria-hidden="true" />}
-        </button>
-      </div>
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-2.5 px-4 pb-8 pt-1 md:gap-3 md:px-5 md:pt-6">
+      <BackLink to="/" label="Back to home" />
+      <h1 className="-mt-1 truncate text-3xl font-extrabold leading-tight tracking-tight md:text-4xl">
+        Country Hopper
+      </h1>
       <p className="-mt-1 hidden text-sm text-(--soft) md:block">
         Pick two countries on the map and see the fewest land borders between them.
       </p>

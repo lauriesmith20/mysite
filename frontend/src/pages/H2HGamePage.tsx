@@ -61,7 +61,7 @@ export default function H2HGamePage() {
 
   if (!game) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12 text-center">
+      <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">Loading…</p>
       </main>
     )
@@ -71,7 +71,7 @@ export default function H2HGamePage() {
   const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12 text-center">
+    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
       <div className="mb-6 flex items-center justify-between">
         <Link
           to={`/game-scores/${friendId}`}

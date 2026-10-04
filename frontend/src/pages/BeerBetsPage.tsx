@@ -109,7 +109,7 @@ export default function BeerBetsPage() {
 
   if (loading || !friend) {
     return (
-      <main className="mx-auto max-w-2xl px-5 py-12 text-center">
+      <main className="mx-auto max-w-2xl px-5 pb-10 pt-1 md:pt-6 text-center">
         <p className="text-(--soft)">Loading…</p>
       </main>
     )

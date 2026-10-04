@@ -88,7 +88,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 md:px-6">
+    <main className="mx-auto max-w-3xl px-4 pb-10 pt-1 md:pt-6 md:px-6">
       <h1 className="mb-8 text-3xl font-bold">Profile</h1>
 
       <div className="mb-6 flex gap-2 border-b border-gray-200 dark:border-gray-800">

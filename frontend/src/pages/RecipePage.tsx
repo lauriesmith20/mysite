@@ -36,14 +36,14 @@ export default function RecipePage() {
 
   if (!recipe) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12 text-center">
+      <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">Loading…</p>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
       <div className="mb-6 flex items-center justify-between">
         <Link
           to="/recipes"

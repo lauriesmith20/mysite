@@ -75,7 +75,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 md:px-6">
+    <main className="mx-auto max-w-4xl px-4 pb-10 pt-1 md:pt-6 md:px-6">
       <h1 className="mb-8 text-3xl font-bold">Settings</h1>
 
       <section>

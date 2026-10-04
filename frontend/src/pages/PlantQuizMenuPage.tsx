@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function PlantQuizMenuPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto max-w-2xl px-6 pb-10 pt-1 md:pt-6">
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"

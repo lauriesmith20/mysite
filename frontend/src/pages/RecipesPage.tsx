@@ -13,7 +13,7 @@ export default function RecipesPage() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-6 pb-10 pt-1 md:pt-6">
       <h1 className="mb-8 text-3xl font-bold">Recipes</h1>
       {loading ? (
         <p className="text-gray-500 dark:text-gray-400">Loading…</p>

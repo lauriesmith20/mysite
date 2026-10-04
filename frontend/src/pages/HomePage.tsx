@@ -21,7 +21,7 @@ export default function HomePage() {
   const visible = q ? tiles.filter((t) => t.title.toLowerCase().includes(q)) : tiles
 
   return (
-    <main className="mx-auto w-full max-w-[1180px] px-5 pb-10 pt-3 md:px-12 md:pt-14">
+    <main className="mx-auto w-full max-w-[1180px] px-5 pb-10 pt-1 md:px-12 md:pt-6">
       <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight md:text-6xl">
         {name ? `Welcome, ${name}` : 'Welcome'}
       </h1>
