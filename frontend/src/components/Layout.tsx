@@ -5,9 +5,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen">
       <Sidebar />
-      <div className="md:pl-16">
-        <Outlet />
-      </div>
+      <Outlet />
     </div>
   )
 }

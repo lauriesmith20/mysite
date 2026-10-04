@@ -1,17 +1,23 @@
-import { House, LogOut, Menu, Settings, User, X } from 'lucide-react'
-import { Fragment, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { House, LogOut, Menu, Moon, Settings, Sun, User, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from './AuthGate'
-import { getIcon } from '../lib/icons'
 import { listTiles, type Tile } from '../lib/tiles'
+import { useTheme } from '../lib/theme'
 
-const linkClassName =
-  'mx-2 flex items-center gap-3 rounded-lg px-3 py-2 text-white transition hover:bg-white/10 md:mx-0 md:h-12 md:w-12 md:justify-center md:px-0 md:py-0'
+const iconButton =
+  'flex h-11 w-11 items-center justify-center rounded-full bg-(--chip) text-(--ink) transition hover:brightness-95'
+const navLink =
+  'rounded-full px-3.5 py-2.5 text-base font-semibold text-(--ink) transition hover:bg-[rgb(128_120_150/0.18)]'
+const menuLink =
+  'flex h-12 items-center gap-3 rounded-2xl px-3 text-base font-semibold text-(--ink) hover:bg-[rgb(128_120_150/0.18)]'
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const [tiles, setTiles] = useState<Tile[]>([])
   const { me, signOut } = useAuth()
+  const { dark, toggle } = useTheme()
+  const close = () => setIsOpen(false)
 
   useEffect(() => {
     listTiles()
@@ -19,109 +25,96 @@ export default function Sidebar() {
       .catch(() => {})
   }, [])
 
+  const themeButton = (
+    <button
+      type="button"
+      aria-label="Toggle dark mode"
+      onClick={toggle}
+      className={iconButton}
+    >
+      {dark ? <Sun size={22} aria-hidden="true" /> : <Moon size={22} aria-hidden="true" />}
+    </button>
+  )
+
   return (
-    <>
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:hidden dark:border-gray-800 dark:bg-gray-950">
-        <Link
-          to="/"
-          onClick={() => setIsOpen(false)}
-          aria-label="Home"
-          className="rounded-md p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          <House aria-hidden="true" />
-        </Link>
-        <button
-          type="button"
-          aria-label={isOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => setIsOpen((open) => !open)}
-          className="rounded-md p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          {isOpen ? <X /> : <Menu />}
-        </button>
-      </header>
-
-      {isOpen && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
-        />
-      )}
-
-      <nav
-        className={`fixed inset-y-0 left-0 z-40 flex w-56 -translate-x-full flex-col justify-between gap-1 bg-[#66B2FF] py-4 transition-transform duration-200 md:w-16 md:translate-x-0 md:items-center ${
-          isOpen ? 'translate-x-0' : ''
-        }`}
-      >
-        <div className="flex flex-col gap-1 md:items-center md:gap-4">
+    <header className="relative z-40">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 md:px-12">
+        <div className="flex items-center gap-7">
           <Link
             to="/"
-            onClick={() => setIsOpen(false)}
+            onClick={close}
             aria-label="Home"
-            title="Home"
-            className={linkClassName}
+            className="flex h-11 items-center gap-2.5 text-xl font-extrabold text-(--ink)"
           >
-            <House aria-hidden="true" />
-            <span className="md:hidden">Home</span>
+            <House size={26} aria-hidden="true" />
+            <span className="hidden md:inline">Laurie's Website</span>
           </Link>
-          {tiles.length > 0 && (
-            <hr className="mx-4 my-2 w-auto border-t border-white/70 md:mx-0 md:w-8" />
-          )}
-          {tiles.map((tile) => {
-            const Icon = getIcon(tile.icon)
-            return (
-              <Fragment key={tile.id}>
-                <Link
-                  to={tile.href}
-                  onClick={() => setIsOpen(false)}
-                  aria-label={tile.title}
-                  title={tile.title}
-                  className={linkClassName}
-                >
-                  <Icon aria-hidden="true" />
-                  <span className="md:hidden">{tile.title}</span>
-                </Link>
-              </Fragment>
-            )
-          })}
+          <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+            {tiles.map((tile) => (
+              <NavLink key={tile.id} to={tile.href} className={navLink}>
+                {tile.title}
+              </NavLink>
+            ))}
+          </nav>
         </div>
 
-        <div className="flex flex-col gap-1 md:items-center md:gap-2">
-          <Link
-            to="/profile"
-            onClick={() => setIsOpen(false)}
-            aria-label="Profile"
-            title="Profile"
-            className={linkClassName}
-          >
-            <User aria-hidden="true" />
-            <span className="md:hidden">Profile</span>
-          </Link>
-          {me.is_admin && (
-            <Link
-              to="/settings"
-              onClick={() => setIsOpen(false)}
-              aria-label="Settings"
-              title="Settings"
-              className={linkClassName}
-            >
-              <Settings aria-hidden="true" />
-              <span className="md:hidden">Settings</span>
+        <div className="flex items-center gap-2">
+          {themeButton}
+          <div className="hidden items-center gap-2 md:flex">
+            <Link to="/profile" aria-label="Profile" title="Profile" className={iconButton}>
+              <User size={22} aria-hidden="true" />
             </Link>
-          )}
+            {me.is_admin && (
+              <Link to="/settings" aria-label="Settings" title="Settings" className={iconButton}>
+                <Settings size={22} aria-hidden="true" />
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label="Sign out"
+              title="Sign out"
+              className={iconButton}
+            >
+              <LogOut size={22} aria-hidden="true" />
+            </button>
+          </div>
           <button
             type="button"
-            onClick={signOut}
-            aria-label="Sign out"
-            title="Sign out"
-            className={linkClassName}
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((open) => !open)}
+            className="flex h-11 w-11 items-center justify-center text-(--ink) md:hidden"
           >
-            <LogOut aria-hidden="true" />
-            <span className="md:hidden">Sign out</span>
+            {isOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
-      </nav>
-    </>
+      </div>
+
+      {isOpen && (
+        <nav
+          aria-label="Menu"
+          className="absolute inset-x-3 top-full flex flex-col gap-1 rounded-3xl bg-(--bg) p-3 shadow-(--tile-shadow) ring-1 ring-black/5 md:hidden dark:ring-white/10"
+        >
+          {tiles.map((tile) => (
+            <Link key={tile.id} to={tile.href} onClick={close} className={menuLink}>
+              {tile.title}
+            </Link>
+          ))}
+          <hr className="my-1 border-t border-black/10 dark:border-white/10" />
+          <Link to="/profile" onClick={close} className={menuLink}>
+            <User size={20} aria-hidden="true" /> Profile
+          </Link>
+          {me.is_admin && (
+            <Link to="/settings" onClick={close} className={menuLink}>
+              <Settings size={20} aria-hidden="true" /> Settings
+            </Link>
+          )}
+          <button type="button" onClick={signOut} className={menuLink}>
+            <LogOut size={20} aria-hidden="true" /> Sign out
+          </button>
+        </nav>
+      )}
+    </header>
   )
 }

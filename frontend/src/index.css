@@ -1,6 +1,32 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --bg: #fbf8f3;
+  --ink: #1b1220;
+  --soft: #5e5668;
+  --chip: #efe9e0;
+  --tile-shadow: 0 10px 24px rgb(27 18 32 / 0.14);
+  color-scheme: light;
+}
+
+:root.dark {
+  --bg: #2b2a37;
+  --ink: #ede8e1;
+  --soft: #b4b0c2;
+  --chip: #3a3948;
+  --tile-shadow: 0 8px 20px rgb(18 17 28 / 0.3);
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  color-scheme: light dark;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
 }
