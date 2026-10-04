@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChefHat, Trash2 } from 'lucide-react'
 import { deleteRecipe, getRecipe, updateRecipeNotes, type Recipe } from '../lib/recipes'
 
 export default function RecipePage() {
@@ -94,6 +94,14 @@ export default function RecipePage() {
           ))}
         </ul>
       </section>
+
+      <Link
+        to={`/recipes/${recipe.id}/cook`}
+        className="mb-8 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#F09A52] text-[17px] font-extrabold text-[#2A1606] transition active:scale-[0.97]"
+      >
+        <ChefHat className="h-5 w-5" aria-hidden="true" />
+        Start cooking
+      </Link>
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">Method</h2>

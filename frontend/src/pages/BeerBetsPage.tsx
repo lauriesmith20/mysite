@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, ArrowRight, Beer } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
-import Avatar from '../components/Avatar'
+import { Beer } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import BackLink from '../components/BackLink'
 import CashOutModal from '../components/CashOutModal'
 import NewBetModal from '../components/NewBetModal'
 import { useAuth } from '../components/AuthGate'
@@ -20,19 +20,26 @@ import {
 } from '../lib/beerBets'
 import { listFriends, type Friend } from '../lib/friends'
 
-const statusStyles: Record<BeerBet['status'], string> = {
-  awaiting_confirmation: 'bg-blue-100 text-blue-800',
-  open: 'bg-amber-100 text-amber-800',
-  resolved: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-100 text-gray-600',
-}
-
 const statusLabels: Record<BeerBet['status'], string> = {
   awaiting_confirmation: 'Awaiting confirmation',
   open: 'Open',
-  resolved: 'Resolved',
+  resolved: 'Settled',
   cancelled: 'Cancelled',
 }
+
+const statusChip: Record<BeerBet['status'], string> = {
+  awaiting_confirmation: 'bg-[#F2C85A] text-[#2A2006]',
+  open: 'bg-(--chip) text-(--ink)',
+  resolved: 'bg-[#B9E0AA] text-[#14240F]',
+  cancelled: 'bg-(--chip) text-(--soft)',
+}
+
+const ME_COLOR = '#EC4060'
+const FRIEND_COLOR = '#4A5BE0'
+
+const pill = 'h-11 rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97]'
+const primaryPill = `${pill} bg-(--ink) text-(--bg)`
+const quietPill = `${pill} bg-(--chip) text-(--ink)`
 
 function nameFor(account: { nickname: string | null; display_name: string | null; email: string }) {
   return account.nickname?.trim() || account.display_name || account.email
@@ -47,6 +54,7 @@ export default function BeerBetsPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showCashOutModal, setShowCashOutModal] = useState(false)
+  const [tab, setTab] = useState<'open' | 'settled'>('open')
 
   const id = Number(friendId)
 
@@ -101,198 +109,239 @@ export default function BeerBetsPage() {
 
   if (loading || !friend) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Loading…</p>
+      <main className="mx-auto max-w-2xl px-5 py-12 text-center">
+        <p className="text-(--soft)">Loading…</p>
       </main>
     )
   }
 
-  return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <Link
-        to="/beer-bets"
-        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to friends
-      </Link>
+  const friendName = nameFor(friend)
+  const isActive = (b: BeerBet) => b.status === 'open' || b.status === 'awaiting_confirmation'
+  const openBets = bets.filter(isActive)
+  const settledBets = bets.filter((b) => !isActive(b))
+  const visible = tab === 'open' ? openBets : settledBets
+  const beers = (n: number) => `${n} beer${n === 1 ? '' : 's'}`
 
-      <div className="mb-8 flex items-center gap-3">
-        <Avatar name={nameFor(friend)} color={friend.avatar_color} size="lg" />
-        <div>
-          <h1 className="text-2xl font-bold">Beer Bets vs {nameFor(friend)}</h1>
-        </div>
-      </div>
+  return (
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3.5 px-5 pb-10 pt-1 md:pt-6">
+      <BackLink to="/beer-bets" label="Back to friends" />
+
+      <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight">Beer Bets</h1>
+      <p className="-mt-2 text-sm text-(--soft)">vs {friendName}</p>
 
       {summary && (
-        <div className="mb-8 flex flex-col items-center gap-4 rounded-xl border border-gray-200 p-6 text-center dark:border-gray-800">
-          {summary.net_beers === 0 ? (
-            <p className="text-lg font-medium">
-              <Beer className="mr-2 inline h-5 w-5" aria-hidden="true" />
-              All square — no beers owed.
-            </p>
-          ) : (
-            <p className="flex items-center gap-2 text-lg font-medium">
-              <span>{summary.owed_by === 'me' ? 'You' : nameFor(friend)}</span>
-              <ArrowRight className="h-5 w-5 text-amber-600" aria-hidden="true" />
-              <span>{summary.owed_by === 'me' ? nameFor(friend) : 'You'}</span>
-              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-sm text-amber-800">
-                <Beer className="h-4 w-4" aria-hidden="true" />
-                {summary.net_beers}
-              </span>
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowCashOutModal(true)}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
-          >
-            Cash out
-          </button>
+        <div className="flex items-center justify-between rounded-[22px] bg-[#F2C85A] px-[18px] py-4 text-[#2A2006]">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-bold">Running tab</span>
+            <span className="text-[22px] font-extrabold leading-tight">
+              {summary.net_beers === 0
+                ? 'All square'
+                : summary.owed_by === 'me'
+                  ? `You owe ${friendName} ${beers(summary.net_beers)}`
+                  : `${friendName} owes you ${beers(summary.net_beers)}`}
+            </span>
+          </div>
+          <Beer size={44} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
         </div>
       )}
 
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Bets</h2>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-        >
-          New bet
-        </button>
+      <div className="flex gap-2">
+        {(['open', 'settled'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            aria-pressed={tab === t}
+            className={`rounded-full px-4 py-2.5 text-sm font-bold ${
+              tab === t ? 'bg-(--ink) text-(--bg)' : 'bg-(--chip) text-(--soft)'
+            }`}
+          >
+            {t === 'open' ? `Open · ${openBets.length}` : `Settled · ${settledBets.length}`}
+          </button>
+        ))}
       </div>
 
-      {bets.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400">No bets yet — raise the first one.</p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {bets.map((bet) => {
-            const isOpponent = bet.opponent.id === me.id
-            return (
-              <div key={bet.id} className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-                <div className="mb-1 flex items-start justify-between gap-2">
-                  <h3 className="font-semibold">{bet.is_settlement ? 'Cash out' : bet.title}</h3>
-                  <span className={`shrink-0 rounded-full px-2 py-1 text-xs ${statusStyles[bet.status]}`}>
-                    {statusLabels[bet.status]}
+      {visible.length === 0 && (
+        <p className="text-(--soft)">
+          {tab === 'open' ? 'No open bets — raise the first one.' : 'Nothing settled yet.'}
+        </p>
+      )}
+
+      {visible.map((bet) => {
+        const isOpponent = bet.opponent.id === me.id
+        const iAmCreator = bet.creator.id === me.id
+        const myName = 'You'
+        const left = iAmCreator ? myName : nameFor(bet.creator)
+        const right = isOpponent ? myName : nameFor(bet.opponent)
+        const leftColor = iAmCreator ? ME_COLOR : FRIEND_COLOR
+        const rightColor = isOpponent ? ME_COLOR : FRIEND_COLOR
+        const colorFor = (id: number) => (id === me.id ? ME_COLOR : FRIEND_COLOR)
+        const winnerName = bet.winner_id === me.id ? 'You' : friendName
+
+        return (
+          <article
+            key={bet.id}
+            className={`relative overflow-hidden rounded-[22px] bg-(--card) shadow-(--card-shadow) ${
+              bet.status === 'resolved' || bet.status === 'cancelled' ? 'opacity-90' : ''
+            }`}
+          >
+            <div className="flex flex-col gap-3 px-[18px] pb-4 pt-[18px]">
+              <div className="flex items-center justify-between">
+                <span className={`rounded-xl px-2.5 py-1 text-xs font-bold ${statusChip[bet.status]}`}>
+                  {bet.is_settlement ? 'Cash out' : statusLabels[bet.status]}
+                </span>
+                <span className="text-xs font-semibold text-(--soft)">Slip #{String(bet.id).padStart(2, '0')}</span>
+              </div>
+              <h2 className="text-xl font-extrabold leading-tight">
+                {bet.is_settlement ? 'Beers paid off' : bet.title}
+              </h2>
+              {bet.description && !bet.is_settlement && (
+                <p className="-mt-1 text-sm text-(--soft)">{bet.description}</p>
+              )}
+              {!bet.is_settlement && (
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="flex-1 rounded-[14px] p-2.5 text-center font-extrabold text-[#1b1220]"
+                    style={{ backgroundColor: leftColor, color: leftColor === FRIEND_COLOR ? '#fff' : undefined }}
+                  >
+                    {left}
+                  </span>
+                  <span className="text-[13px] font-extrabold text-(--soft)">VS</span>
+                  <span
+                    className="flex-1 rounded-[14px] p-2.5 text-center font-extrabold text-[#1b1220]"
+                    style={{ backgroundColor: rightColor, color: rightColor === FRIEND_COLOR ? '#fff' : undefined }}
+                  >
+                    {right}
                   </span>
                 </div>
+              )}
+            </div>
 
-                {bet.is_settlement ? (
-                  <p className="text-sm font-medium">
-                    🍻 {bet.winner_id === me.id ? 'You' : nameFor(friend)} paid {bet.stake} beer
-                    {bet.stake === 1 ? '' : 's'}
-                  </p>
-                ) : (
-                  <>
-                    {bet.description && (
-                      <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">{bet.description}</p>
-                    )}
-                    <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
-                      Stake: {bet.stake} beer{bet.stake === 1 ? '' : 's'} · raised by{' '}
-                      {bet.creator.id === me.id ? 'you' : nameFor(bet.creator)}
-                    </p>
+            <div className="relative mx-3.5 border-t-2 border-dashed border-(--chip)">
+              <span className="absolute -left-6 -top-[11px] h-[22px] w-[22px] rounded-full bg-(--bg)" />
+              <span className="absolute -right-6 -top-[11px] h-[22px] w-[22px] rounded-full bg-(--bg)" />
+            </div>
 
-                    {bet.status === 'awaiting_confirmation' && (
-                      <div className="flex gap-2">
-                        {isOpponent && (
-                          <button
-                            type="button"
-                            onClick={() => handleConfirm(bet.id)}
-                            className="rounded-md bg-green-600 px-3 py-1 text-xs text-white hover:opacity-90"
-                          >
+            <div className="flex flex-col gap-3 px-[18px] pb-[18px] pt-3.5">
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="text-(--soft)">{bet.is_settlement ? 'Paid' : 'Stakes'}</span>
+                <span className="text-right font-extrabold">
+                  {bet.is_settlement
+                    ? `${winnerName} paid ${beers(bet.stake)}`
+                    : `${beers(bet.stake)} · raised by ${iAmCreator ? 'you' : nameFor(bet.creator)}`}
+                </span>
+              </div>
+
+              {!bet.is_settlement && (
+                <>
+                  {bet.status === 'awaiting_confirmation' && (
+                    <div className="flex gap-2.5">
+                      {isOpponent && (
+                        <button type="button" onClick={() => handleConfirm(bet.id)} className={`flex-1 ${primaryPill}`}>
+                          Confirm
+                        </button>
+                      )}
+                      <button type="button" onClick={() => handleCancel(bet.id)} className={`flex-1 ${quietPill}`}>
+                        Cancel bet
+                      </button>
+                    </div>
+                  )}
+
+                  {bet.status === 'open' && bet.claimed_winner_id != null && (
+                    <div className="flex flex-col gap-2.5">
+                      <p className="text-sm text-(--soft)">
+                        {bet.claimed_by_id === me.id
+                          ? `Waiting for ${friendName} to confirm your claim that ${
+                              bet.claimed_winner_id === me.id ? 'you' : friendName
+                            } won.`
+                          : `${friendName} claimed ${
+                              bet.claimed_winner_id === me.id ? 'you' : 'they'
+                            } won this bet — confirm or dispute.`}
+                      </p>
+                      {bet.claimed_by_id !== me.id && (
+                        <div className="flex gap-2.5">
+                          <button type="button" onClick={() => handleConfirmWinner(bet.id)} className={`flex-1 ${primaryPill}`}>
                             Confirm
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleCancel(bet.id)}
-                          className="rounded-md border border-gray-200 px-3 py-1 text-xs hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
-                        >
-                          Cancel bet
-                        </button>
-                      </div>
-                    )}
-                    {bet.status === 'open' && bet.claimed_winner_id != null && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {bet.claimed_by_id === me.id
-                            ? `Waiting for ${nameFor(friend)} to confirm your claim that ${
-                                bet.claimed_winner_id === me.id ? 'you' : nameFor(friend)
-                              } won.`
-                            : `${nameFor(friend)} claimed ${
-                                bet.claimed_winner_id === me.id ? 'you' : 'they'
-                              } won this bet — confirm or dispute.`}
-                        </span>
-                        {bet.claimed_by_id !== me.id && (
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleConfirmWinner(bet.id)}
-                              className="rounded-md bg-green-600 px-3 py-1 text-xs text-white hover:opacity-90"
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDisputeWinner(bet.id)}
-                              className="rounded-md bg-red-600 px-3 py-1 text-xs text-white hover:opacity-90"
-                            >
-                              Dispute
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {bet.status === 'open' && bet.claimed_winner_id == null && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">Who won?</span>
+                          <button type="button" onClick={() => handleDisputeWinner(bet.id)} className={`flex-1 ${quietPill}`}>
+                            Dispute
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {bet.status === 'open' && bet.claimed_winner_id == null && (
+                    <>
+                      <div className="flex gap-2.5">
                         <button
                           type="button"
                           onClick={() => handleResolve(bet.id, me.id)}
-                          className="rounded-md bg-gray-900 px-3 py-1 text-xs text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                          className="h-[46px] flex-1 rounded-full text-sm font-extrabold text-[#1b1220] transition active:scale-[0.97]"
+                          style={{ backgroundColor: ME_COLOR }}
                         >
                           I won
                         </button>
                         <button
                           type="button"
                           onClick={() => handleResolve(bet.id, isOpponent ? bet.creator.id : bet.opponent.id)}
-                          className="rounded-md border border-gray-200 px-3 py-1 text-xs hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
+                          className="h-[46px] flex-1 rounded-full text-sm font-extrabold text-white transition active:scale-[0.97]"
+                          style={{ backgroundColor: FRIEND_COLOR }}
                         >
-                          {nameFor(friend)} won
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleCancel(bet.id)}
-                          className="ml-auto text-xs text-gray-400 underline hover:text-gray-700 dark:hover:text-gray-200"
-                        >
-                          Cancel bet
+                          {friendName} won
                         </button>
                       </div>
-                    )}
-                    {bet.status === 'resolved' && (
-                      <p className="text-sm font-medium">
-                        🏆 {bet.winner_id === me.id ? 'You' : nameFor(friend)} won
-                      </p>
-                    )}
-                    {bet.status === 'cancelled' && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">This bet was cancelled.</p>
-                    )}
-                  </>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+                      <button
+                        type="button"
+                        onClick={() => handleCancel(bet.id)}
+                        className="self-center text-xs text-(--soft) underline"
+                      >
+                        Cancel bet
+                      </button>
+                    </>
+                  )}
+
+                  {bet.status === 'resolved' && (
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-(--soft)">Winner</span>
+                      <span className="flex items-center gap-2 font-extrabold">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: colorFor(bet.winner_id ?? 0) }}
+                          aria-hidden="true"
+                        />
+                        {winnerName}
+                      </span>
+                    </div>
+                  )}
+                  {bet.status === 'cancelled' && <p className="text-sm text-(--soft)">This bet was cancelled.</p>}
+                </>
+              )}
+            </div>
+          </article>
+        )
+      })}
+
+      <div className="mt-2 flex gap-2.5">
+        <button
+          type="button"
+          onClick={() => setShowModal(true)}
+          className="h-[54px] flex-1 rounded-full bg-(--ink) text-base font-extrabold text-(--bg) transition active:scale-[0.97]"
+        >
+          New bet slip
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowCashOutModal(true)}
+          className="h-[54px] flex-1 rounded-full bg-(--chip) text-base font-extrabold text-(--ink) transition active:scale-[0.97]"
+        >
+          Cash out
+        </button>
+      </div>
 
       {showModal && <NewBetModal onClose={() => setShowModal(false)} onCreate={handleCreate} />}
       {showCashOutModal && (
-        <CashOutModal
-          friendName={nameFor(friend)}
-          onClose={() => setShowCashOutModal(false)}
-          onCashOut={handleCashOut}
-        />
+        <CashOutModal friendName={friendName} onClose={() => setShowCashOutModal(false)} onCashOut={handleCashOut} />
       )}
     </main>
   )

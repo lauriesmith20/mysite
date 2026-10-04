@@ -7,6 +7,7 @@ import GameScoresFriendPage from './pages/GameScoresFriendPage'
 import GameScoresPage from './pages/GameScoresPage'
 import H2HGamePage from './pages/H2HGamePage'
 import HomePage from './pages/HomePage'
+import CookingModePage from './pages/CookingModePage'
 import PlantQuizGamePage from './pages/PlantQuizGamePage'
 import PlantQuizLeaderboardsPage from './pages/PlantQuizLeaderboardsPage'
 import PlantQuizMenuPage from './pages/PlantQuizMenuPage'
@@ -18,6 +19,7 @@ import SettingsPage from './pages/SettingsPage'
 function App() {
   return (
     <Routes>
+      <Route path="/recipes/:id/cook" element={<CookingModePage />} />
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/game-scores" element={<GameScoresPage />} />

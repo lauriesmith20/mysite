@@ -10,6 +10,13 @@ class Ingredient(BaseModel):
     unit: str | None = None
 
 
+class StepDetail(BaseModel):
+    """Cooking-mode extras for one step; `step_details[i]` belongs to `steps[i]`."""
+
+    timer_seconds: int | None = None
+    ingredients: list[str] = []
+
+
 class RecipeCreate(BaseModel):
     title: str
     image_url: str | None = None
@@ -17,6 +24,7 @@ class RecipeCreate(BaseModel):
     servings: int | None = None
     ingredients: list[Ingredient]
     steps: list[str]
+    step_details: list[StepDetail] | None = None
     tags: list[str] = []
     notes: str | None = None
 
@@ -28,6 +36,7 @@ class RecipeUpdate(BaseModel):
     servings: int | None = None
     ingredients: list[Ingredient] | None = None
     steps: list[str] | None = None
+    step_details: list[StepDetail] | None = None
     tags: list[str] | None = None
     notes: str | None = None
 
@@ -40,6 +49,7 @@ class RecipeRead(BaseModel):
     servings: int | None
     ingredients: list[Ingredient]
     steps: list[str]
+    step_details: list[StepDetail] | None
     tags: list[str]
     notes: str | None
     created_at: datetime.datetime

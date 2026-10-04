@@ -6,6 +6,11 @@ export interface Ingredient {
   unit: string | null
 }
 
+export interface StepDetail {
+  timer_seconds: number | null
+  ingredients: string[]
+}
+
 export interface Recipe {
   id: number
   title: string
@@ -14,6 +19,7 @@ export interface Recipe {
   servings: number | null
   ingredients: Ingredient[]
   steps: string[]
+  step_details: StepDetail[] | null
   tags: string[]
   notes: string | null
   created_at: string

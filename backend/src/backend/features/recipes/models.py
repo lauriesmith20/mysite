@@ -18,6 +18,8 @@ class Recipe(Base):
     # Structured as list[{"name": str, "amount": float | None, "unit": str | None}], see schemas.Ingredient.
     ingredients: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     steps: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    # Optional per-step extras for cooking mode, aligned by index with `steps`; see schemas.StepDetail.
+    step_details: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     notes: Mapped[str | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(

@@ -11,6 +11,8 @@
   --ink: #1b1220;
   --soft: #5e5668;
   --chip: #efe9e0;
+  --card: #ffffff;
+  --card-shadow: 0 8px 22px rgb(27 18 32 / 0.1);
   --tile-shadow: 0 10px 24px rgb(27 18 32 / 0.14);
   color-scheme: light;
 }
@@ -20,6 +22,8 @@
   --ink: #ede8e1;
   --soft: #b4b0c2;
   --chip: #3a3948;
+  --card: #363545;
+  --card-shadow: 0 8px 20px rgb(18 17 28 / 0.3);
   --tile-shadow: 0 8px 20px rgb(18 17 28 / 0.3);
   color-scheme: dark;
 }

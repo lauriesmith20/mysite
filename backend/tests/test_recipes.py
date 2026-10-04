@@ -44,3 +44,21 @@ def test_create_list_get_and_update_recipe() -> None:
 def test_get_missing_recipe_returns_404() -> None:
     response = client.get("/api/recipes/999999")
     assert response.status_code == 404
+
+
+def test_recipe_step_details_round_trip() -> None:
+    response = client.post(
+        "/api/recipes/",
+        json={
+            "title": "Pasta",
+            "description": "Simple pasta",
+            "ingredients": [{"name": "pasta", "amount": 200, "unit": "g"}],
+            "steps": ["Boil the pasta for 9 minutes", "Serve"],
+            "step_details": [
+                {"timer_seconds": 540, "ingredients": ["pasta"]},
+                {"timer_seconds": None, "ingredients": []},
+            ],
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["step_details"][0] == {"timer_seconds": 540, "ingredients": ["pasta"]}
