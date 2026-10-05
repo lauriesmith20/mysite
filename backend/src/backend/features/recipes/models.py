@@ -20,6 +20,8 @@ class Recipe(Base):
     steps: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     # Optional per-step extras for cooking mode, aligned by index with `steps`; see schemas.StepDetail.
     step_details: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+    # One of schemas.RECIPE_CATEGORIES; stored as plain text so adding a category needs no migration.
+    category: Mapped[str] = mapped_column(nullable=False, default="other", server_default="other")
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     notes: Mapped[str | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(

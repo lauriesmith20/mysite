@@ -1,7 +1,11 @@
 """Pydantic request/response models for the recipes feature."""
 import datetime
+from typing import Literal, get_args
 
 from pydantic import BaseModel
+
+RecipeCategory = Literal["meals", "baking", "other"]
+RECIPE_CATEGORIES: tuple[str, ...] = get_args(RecipeCategory)
 
 
 class Ingredient(BaseModel):
@@ -25,6 +29,7 @@ class RecipeCreate(BaseModel):
     ingredients: list[Ingredient]
     steps: list[str]
     step_details: list[StepDetail] | None = None
+    category: RecipeCategory = "other"
     tags: list[str] = []
     notes: str | None = None
 
@@ -37,6 +42,7 @@ class RecipeUpdate(BaseModel):
     ingredients: list[Ingredient] | None = None
     steps: list[str] | None = None
     step_details: list[StepDetail] | None = None
+    category: RecipeCategory | None = None
     tags: list[str] | None = None
     notes: str | None = None
 
@@ -50,6 +56,7 @@ class RecipeRead(BaseModel):
     ingredients: list[Ingredient]
     steps: list[str]
     step_details: list[StepDetail] | None
+    category: RecipeCategory
     tags: list[str]
     notes: str | None
     created_at: datetime.datetime

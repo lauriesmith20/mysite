@@ -62,3 +62,23 @@ def test_recipe_step_details_round_trip() -> None:
     )
     assert response.status_code == 201
     assert response.json()["step_details"][0] == {"timer_seconds": 540, "ingredients": ["pasta"]}
+
+
+def test_recipe_category_defaults_to_other_and_can_be_updated() -> None:
+    created = client.post(
+        "/api/recipes/",
+        json={
+            "title": "Scones",
+            "description": "Afternoon tea scones",
+            "ingredients": [{"name": "flour", "amount": 250, "unit": "g"}],
+            "steps": ["Bake"],
+        },
+    ).json()
+    assert created["category"] == "other"
+
+    updated = client.patch(f"/api/recipes/{created['id']}", json={"category": "baking"})
+    assert updated.status_code == 200
+    assert updated.json()["category"] == "baking"
+
+    invalid = client.patch(f"/api/recipes/{created['id']}", json={"category": "dessert"})
+    assert invalid.status_code == 422

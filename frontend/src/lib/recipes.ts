@@ -11,6 +11,14 @@ export interface StepDetail {
   ingredients: string[]
 }
 
+export const RECIPE_CATEGORIES = [
+  { value: 'meals', label: 'Meals' },
+  { value: 'baking', label: 'Baking' },
+  { value: 'other', label: 'Other' },
+] as const
+
+export type RecipeCategory = (typeof RECIPE_CATEGORIES)[number]['value']
+
 export interface Recipe {
   id: number
   title: string
@@ -20,6 +28,7 @@ export interface Recipe {
   ingredients: Ingredient[]
   steps: string[]
   step_details: StepDetail[] | null
+  category: RecipeCategory
   tags: string[]
   notes: string | null
   created_at: string
@@ -41,6 +50,15 @@ export async function updateRecipeNotes(id: number, notes: string): Promise<Reci
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ notes }),
+  })
+  return response.json()
+}
+
+export async function updateRecipeCategory(id: number, category: RecipeCategory): Promise<Recipe> {
+  const response = await apiFetch(`/api/recipes/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category }),
   })
   return response.json()
 }

@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Page from '../shared/layout/Page'
 import { ChefHat, Trash2 } from 'lucide-react'
-import { deleteRecipe, getRecipe, updateRecipeNotes, type Recipe } from '../lib/recipes'
+import {
+  RECIPE_CATEGORIES,
+  deleteRecipe,
+  getRecipe,
+  updateRecipeCategory,
+  updateRecipeNotes,
+  type Recipe,
+  type RecipeCategory,
+} from '../lib/recipes'
 
 export default function RecipePage() {
   const { id } = useParams<{ id: string }>()
@@ -27,6 +35,11 @@ export default function RecipePage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleCategoryChange(category: RecipeCategory) {
+    if (!id) return
+    setRecipe(await updateRecipeCategory(Number(id), category))
   }
 
   async function handleDelete() {
@@ -66,6 +79,18 @@ export default function RecipePage() {
       )}
       <p className="mb-2 text-gray-600 dark:text-gray-300">{recipe.description}</p>
       <div className="mb-8 flex flex-wrap items-center gap-2">
+        <select
+          value={recipe.category}
+          onChange={(e) => handleCategoryChange(e.target.value as RecipeCategory)}
+          aria-label="Category"
+          className="rounded-full border border-gray-200 bg-transparent px-2 py-0.5 text-xs font-medium dark:border-gray-800"
+        >
+          {RECIPE_CATEGORIES.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
         {recipe.servings != null && (
           <span className="text-sm text-gray-500 dark:text-gray-400">Serves {recipe.servings}</span>
         )}
