@@ -13,6 +13,7 @@ import {
   type ScoreHistoryEntry,
 } from '../lib/gameScores'
 import EditGameModal from '../components/EditGameModal'
+import ScoreBurst from '../components/ScoreBurst'
 import { useAuth } from '../shared/auth/AuthGate'
 
 function nameFor(account: { nickname: string | null; display_name: string | null; email: string }) {
@@ -27,6 +28,8 @@ export default function H2HGamePage() {
   const [history, setHistory] = useState<ScoreHistoryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  // `key` changes per score so the effect restarts even when the same player scores twice running.
+  const [burst, setBurst] = useState<{ key: number; playerId: number } | null>(null)
 
   useEffect(() => {
     if (id) getGame(Number(id)).then(setGame)
@@ -42,6 +45,7 @@ export default function H2HGamePage() {
     try {
       const updated = await updateScore(Number(id), playerId)
       setGame(updated)
+      setBurst((prev) => ({ key: (prev?.key ?? 0) + 1, playerId }))
       setHistory(await getScoreHistory(Number(id)))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update score.')
@@ -70,6 +74,12 @@ export default function H2HGamePage() {
 
   const locked = game.is_daily && hasUpdatedToday(game)
   const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
+  // You are always on the left, whichever side of the game you were stored as.
+  const sides = [
+    { player: game.creator, score: game.creator_score },
+    { player: game.opponent, score: game.opponent_score },
+  ]
+  if (game.opponent.id === me.id) sides.reverse()
 
   return (
     <Page
@@ -100,32 +110,25 @@ export default function H2HGamePage() {
       )}
       {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
       <div className="grid grid-cols-2 gap-6">
-        <div className="flex flex-col items-center gap-4">
-          <h2 className="text-lg font-semibold">
-            {game.creator.id === me.id ? 'You' : nameFor(game.creator)}
-          </h2>
-          <p className="text-5xl font-bold">{game.creator_score}</p>
-          <button
-            onClick={() => handleScore(game.creator.id)}
-            disabled={locked}
-            className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
-          >
-            +1
-          </button>
-        </div>
-        <div className="flex flex-col items-center gap-4">
-          <h2 className="text-lg font-semibold">
-            {game.opponent.id === me.id ? 'You' : nameFor(game.opponent)}
-          </h2>
-          <p className="text-5xl font-bold">{game.opponent_score}</p>
-          <button
-            onClick={() => handleScore(game.opponent.id)}
-            disabled={locked}
-            className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
-          >
-            +1
-          </button>
-        </div>
+        {sides.map(({ player, score }) => {
+          const isMe = player.id === me.id
+          return (
+            <div key={player.id} className="relative flex flex-col items-center gap-4">
+              <h2 className="text-lg font-semibold">{isMe ? 'You' : nameFor(player)}</h2>
+              <p className="text-5xl font-bold">{score}</p>
+              <button
+                onClick={() => handleScore(player.id)}
+                disabled={locked}
+                className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
+              >
+                +1
+              </button>
+              {burst?.playerId === player.id && (
+                <ScoreBurst key={burst.key} kind={isMe ? 'confetti' : 'miss'} />
+              )}
+            </div>
+          )
+        })}
       </div>
       {history.length > 0 && (
         <div className="mt-10 text-left">
