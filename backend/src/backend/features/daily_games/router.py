@@ -62,6 +62,8 @@ def record_result(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Puzzle date is in the future")
     if len(json.dumps(payload.details)) > MAX_DETAILS_BYTES:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Details are too large")
+    if game.validate is not None and (problem := game.validate(payload)) is not None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
 
     stored = _existing(db, account, game_key, payload.puzzle_date)
     if stored is not None:

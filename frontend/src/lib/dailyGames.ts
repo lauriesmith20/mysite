@@ -127,3 +127,24 @@ export async function listRivalsForDay(gameKey: string, day: string): Promise<Ri
   const response = await apiFetch(`/api/daily-games/${gameKey}/rivals/${day}`)
   return response.json()
 }
+
+// ── Rivalry reveal ───────────────────────────────────────────────────────────────────────────────
+
+const revealKey = (gameId: number, day: string) => `rival-reveal:${gameId}:${day}`
+
+/** Whether today's 3-2-1 reveal for this rivalry has already been shown on this device. */
+export function hasSeenReveal(gameId: number, day: string): boolean {
+  try {
+    return localStorage.getItem(revealKey(gameId, day)) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function markRevealSeen(gameId: number, day: string) {
+  try {
+    localStorage.setItem(revealKey(gameId, day), '1')
+  } catch {
+    // storage unavailable: the reveal may just play again next visit
+  }
+}

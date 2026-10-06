@@ -57,7 +57,7 @@ export default function ChallengeModal({ friendName, taken, onClose, onChallenge
                   <span className="min-w-0 flex-1">
                     <span className="block text-[17px] font-extrabold">{game.title}</span>
                     <span className="block text-xs font-semibold text-(--soft)">
-                      {already ? 'Already challenged' : sending === game.key ? 'Sending…' : 'Daily rivalry'}
+                      {already ? 'Already challenged' : sending === game.key ? 'Sending…' : game.blurb}
                     </span>
                   </span>
                 </button>

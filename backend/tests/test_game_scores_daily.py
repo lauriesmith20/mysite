@@ -75,8 +75,8 @@ def befriend(first: int, second: int) -> None:
         call(second, "post", f"/api/friends/requests/{created.json()['id']}/accept")
 
 
-def challenge(challenger: int, opponent: int) -> dict:
-    response = call(challenger, "post", "/api/game-scores/challenges", json={"opponent_id": opponent, "daily_game_key": KEY})
+def challenge(challenger: int, opponent: int, key: str = KEY) -> dict:
+    response = call(challenger, "post", "/api/game-scores/challenges", json={"opponent_id": opponent, "daily_game_key": key})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -282,3 +282,54 @@ def test_days_endpoint_rejects_ordinary_games() -> None:
     assert call(1, "get", f"/api/game-scores/{ordinary['id']}/days").status_code == 400
     assert ordinary["daily_game_key"] is None
     assert ordinary["challenge_status"] is None
+
+
+# ── Wordle rivalries: fewer guesses wins, the same number is a draw ──────────────────────────────
+
+
+def play_wordle(account_id: int, day: datetime.date, attempts: int | None) -> None:
+    rows = attempts if attempts is not None else 6
+    won = attempts is not None
+    response = call(
+        account_id,
+        "post",
+        "/api/daily-games/wordle/results",
+        json={
+            "puzzle_date": day.isoformat(),
+            "score": 7 - attempts if attempts is not None else 0,
+            "outcome": "won" if won else "lost",
+            "details": {
+                "puzzle_number": (day - datetime.date(2021, 6, 19)).days,
+                "attempts": attempts,
+                "hard_mode": False,
+                "grid": ["\u2b1c" * 5] * (rows - 1) + ["\U0001f7e9" * 5 if won else "\u2b1c" * 5],
+            },
+        },
+    )
+    assert response.status_code in (200, 201), response.text
+
+
+def test_wordle_rivalry_draws_on_equal_guesses_and_fewer_guesses_wins() -> None:
+    befriend(2, 3)
+    today = _today()
+    tomorrow = today + datetime.timedelta(days=1)
+
+    game = challenge(2, 3, key="wordle")
+    assert game["name"] == "Wordle"
+    accept(3, game["id"])
+
+    # Same number of guesses: a draw, however it was reached.
+    play_wordle(2, today, 3)
+    play_wordle(3, today, 3)
+    # Fewer guesses wins, and says what decided it.
+    play_wordle(2, tomorrow, 3)
+    play_wordle(3, tomorrow, 4)
+
+    days = days_for(2, game["id"])
+    assert [d["puzzle_date"] for d in days] == [tomorrow.isoformat(), today.isoformat()]
+    assert (days[0]["winner"], days[0]["decided_by"]) == ("me", "guesses")
+    assert (days[1]["winner"], days[1]["decided_by"]) == ("draw", None)
+
+    listed = call(2, "get", "/api/game-scores/with/3").json()
+    rivalry = next(g for g in listed if g["id"] == game["id"])
+    assert (rivalry["creator_score"], rivalry["opponent_score"]) == (1, 0)

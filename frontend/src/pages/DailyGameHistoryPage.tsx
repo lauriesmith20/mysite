@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import DailyScore from '../components/DailyScore'
+import ResultScore from '../components/ResultScore'
 import Lives from '../components/Lives'
+import PasteResultButton from '../components/PasteResultButton'
 import { DAILY_GAMES } from '../lib/dailyGameRegistry'
 import { formatPuzzleDay, listResults, playStats, type DailyGameResult } from '../lib/dailyGames'
 import Page from '../shared/layout/Page'
@@ -30,6 +31,14 @@ export default function DailyGameHistoryPage() {
   }, [game])
 
   const stats = useMemo(() => (results ? playStats(results) : null), [results])
+  const average = useMemo(
+    () =>
+      (game && results && game.averageStat?.(results)) || {
+        value: stats ? stats.averageScore.toFixed(1) : '',
+        label: `Avg out of ${game?.maxScore ?? ''}`,
+      },
+    [game, results, stats],
+  )
 
   if (!game) {
     return (
@@ -44,26 +53,42 @@ export default function DailyGameHistoryPage() {
       title="Score history"
       subtitle={game.title}
       subtitleClassName="text-sm"
-      back={{ to: game.playPath, label: `Back to ${game.title}` }}
+      back={game.home}
       contentClassName="flex flex-col gap-4"
     >
+      {game.paste && (
+        <PasteResultButton
+          game={game}
+          onRecorded={() =>
+            listResults(game.key)
+              .then(setResults)
+              .catch(() => {})
+          }
+        />
+      )}
       {error ? (
         <p className="text-(--soft)">Couldn't load your results. Try again later.</p>
       ) : !results || !stats ? (
         <p className="text-(--soft)">Loading…</p>
       ) : results.length === 0 ? (
         <p className="text-(--soft)">
-          Nothing here yet.{' '}
-          <Link to={game.playPath} className="font-bold underline">
-            Play today's puzzle
-          </Link>{' '}
-          and your result will show up.
+          {game.paste ? (
+            <>Nothing here yet. Paste today's result above and it'll show up.</>
+          ) : (
+            <>
+              Nothing here yet.{' '}
+              <Link to={game.playPath} className="font-bold underline">
+                Play today's puzzle
+              </Link>{' '}
+              and your result will show up.
+            </>
+          )}
         </p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2.5">
             <Stat value={String(stats.played)} label="Played" />
-            <Stat value={stats.averageScore.toFixed(1)} label={`Avg out of ${game.maxScore}`} />
+            <Stat value={average.value} label={average.label} />
             <Stat value={String(stats.currentStreak)} label={`Streak (best ${stats.bestStreak})`} />
           </div>
 
@@ -81,13 +106,7 @@ export default function DailyGameHistoryPage() {
                     {detail && <span className="block text-[13px] font-semibold text-(--soft)">{detail}</span>}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <DailyScore
-                      score={result.score}
-                      max={game.maxScore}
-                      icon={game.scoreIcon}
-                      label="points"
-                      className="gap-0.5 text-lg"
-                    />
+                    <ResultScore game={game} result={result} className="gap-0.5 text-lg" />
                     {lives && <Lives lives={lives.left} max={lives.max} size={14} />}
                   </div>
                 </li>

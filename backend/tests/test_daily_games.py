@@ -93,3 +93,54 @@ def test_results_are_private_to_each_account() -> None:
         app.dependency_overrides[require_approved_account] = original
 
     assert client.get(f"{URL}/2026-03-01").json()["score"] == 5
+
+
+# ── Wordle (pasted from nytimes.com) ─────────────────────────────────────────────────────────────
+
+WORDLE = "/api/daily-games/wordle/results"
+GREEN_ROW = "\U0001f7e9" * 5
+
+
+def _wordle(day: datetime.date, attempts: int | None, *, number: int | None = None, score: int | None = None) -> dict:
+    """A Wordle result for `day`; attempts None means a failed game (X/6)."""
+    won = attempts is not None
+    rows = attempts if won else 6
+    return {
+        "puzzle_date": day.isoformat(),
+        "score": (7 - attempts if won else 0) if score is None else score,
+        "outcome": "won" if won else "lost",
+        "details": {
+            "puzzle_number": (day - datetime.date(2021, 6, 19)).days if number is None else number,
+            "attempts": attempts,
+            "hard_mode": False,
+            "grid": ["\u2b1c" * 5] * (rows - 1) + [GREEN_ROW if won else "\u2b1c" * 5],
+        },
+    }
+
+
+def test_wordle_results_are_checked_for_consistency() -> None:
+    day = datetime.date(2026, 4, 1)
+    solved = client.post(WORDLE, json=_wordle(day, 4))
+    assert solved.status_code == 201
+    assert solved.json()["score"] == 3  # 7 - 4 guesses
+
+    failed = client.post(WORDLE, json=_wordle(datetime.date(2026, 4, 2), None))
+    assert failed.status_code == 201
+    assert (failed.json()["outcome"], failed.json()["score"]) == ("lost", 0)
+
+    other = datetime.date(2026, 4, 3)
+    # The puzzle number has to be the one for that day.
+    assert client.post(WORDLE, json=_wordle(other, 3, number=1)).status_code == 422
+    # The score has to match the guesses, and a fail can't score.
+    assert client.post(WORDLE, json=_wordle(other, 3, score=6)).status_code == 422
+    assert client.post(WORDLE, json=_wordle(other, None, score=2)).status_code == 422
+    # The grid has to have one row per guess.
+    bad_grid = _wordle(other, 3)
+    bad_grid["details"]["grid"] = bad_grid["details"]["grid"][:-1]
+    assert client.post(WORDLE, json=bad_grid).status_code == 422
+    # And there has to be a puzzle number at all.
+    no_number = _wordle(other, 3)
+    del no_number["details"]["puzzle_number"]
+    assert client.post(WORDLE, json=no_number).status_code == 422
+    # Nothing was recorded for the rejected attempts.
+    assert client.get(f"{WORDLE}/{other.isoformat()}").status_code == 404

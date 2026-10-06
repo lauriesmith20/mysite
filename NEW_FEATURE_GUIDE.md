@@ -77,12 +77,21 @@ no new tables or migration:
    restore the finished game in `details`, and on load use `getResult(key, day)` to restore it, so a day
    can't be replayed from another device. Link to `/games/<key>/history` once the game is complete.
 
+**Games played elsewhere (e.g. Wordle on nytimes.com)** can't be read from the browser, so players paste their
+share text. Give the frontend entry a `paste` block with a `parse` function that turns the pasted text into
+a result (or null if it isn't recognised, which shows "<Game> result not detected"), and give the backend
+entry a `validate` function that re-checks the result hangs together (e.g. Wordle's puzzle number must be
+the one for that day). The `PasteResultButton` then appears on the game's rivalry page and history page.
+See `frontend/src/lib/wordle.ts` and the `wordle` entries in both registries.
+
 **Rivalries come for free.** A registered game appears in the "Challenge to a daily game" picker on a
 friend's rivalry page. Once they accept, each puzzle day is won by whoever ranks higher (per the game's
 `rank`), scores count days won, and a friend's result is only shown after you've finished that day.
 It counts from the day the challenge was accepted (that whole day, even if one of you had already
 played it); earlier days never count. To show rivals on the game's result screen, call
-`listRivalsForDay(key, day)` after `submitResult` resolves (see `CountryHopperPage`).
+`listRivalsForDay(key, day)` after `submitResult` resolves (see `CountryHopperPage`). The rivalry page also plays a
+3-2-1 reveal of today's result (`RivalReveal`: confetti if you won, red crosses if they did) the first time
+both of you have played, once per rivalry per day, with a "Replay reveal" link.
 
 The first result recorded per account, game and day is final (re-posting returns the stored one), and
 `/games/<key>/history` (streaks, average, list) works for any registered game.

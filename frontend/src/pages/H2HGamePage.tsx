@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Page from '../shared/layout/Page'
 import { Settings, Trash2 } from 'lucide-react'
 import {
@@ -17,8 +17,11 @@ import {
   type ScoreHistoryEntry,
 } from '../lib/gameScores'
 import { DAILY_GAMES } from '../lib/dailyGameRegistry'
+import { hasSeenReveal, localDateKey, markRevealSeen } from '../lib/dailyGames'
 import EditGameModal from '../components/EditGameModal'
+import PasteResultButton from '../components/PasteResultButton'
 import RivalDayList from '../components/RivalDayList'
+import RivalReveal from '../components/RivalReveal'
 import ScoreBurst from '../components/ScoreBurst'
 import { useAuth } from '../shared/auth/AuthGate'
 
@@ -38,6 +41,9 @@ export default function H2HGamePage() {
   const [burst, setBurst] = useState<{ key: number; playerId: number } | null>(null)
   // Day-by-day results, for rivalries over a built-in daily game.
   const [days, setDays] = useState<RivalDay[] | null>(null)
+  // The 3-2-1 reveal of today's result: plays the first time you see it decided, or when replayed.
+  const [revealDone, setRevealDone] = useState(false)
+  const [replaying, setReplaying] = useState(false)
 
   useEffect(() => {
     if (id) getGame(Number(id)).then(setGame)
@@ -119,6 +125,9 @@ export default function H2HGamePage() {
   const daily = game.daily_game_key !== null ? DAILY_GAMES[game.daily_game_key] : undefined
   const isChallenge = game.daily_game_key !== null
   const pendingChallenge = isChallenge && game.challenge_status === 'pending'
+  const today = localDateKey()
+  const todayDecided = days?.find((day) => day.puzzle_date === today && day.winner !== null)
+  const showReveal = isLiveRivalry && todayDecided && !revealDone && (replaying || !hasSeenReveal(game.id, today))
   const locked = !isChallenge && game.is_daily && hasUpdatedToday(game)
   const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
   // You are always on the left, whichever side of the game you were stored as.
@@ -153,6 +162,18 @@ export default function H2HGamePage() {
       }
       contentClassName="text-center"
     >
+      {showReveal && todayDecided && todayDecided.winner && (
+        <RivalReveal
+          outcome={todayDecided.winner}
+          friendName={nameFor(game.creator.id === me.id ? game.opponent : game.creator)}
+          decidedBy={todayDecided.decided_by}
+          onShown={() => markRevealSeen(game.id, today)}
+          onDone={() => {
+            setRevealDone(true)
+            setReplaying(false)
+          }}
+        />
+      )}
       {game.image_url && (
         <img src={game.image_url} alt={game.name} className="mx-auto mb-6 h-40 w-40 rounded-xl object-cover" />
       )}
@@ -228,6 +249,18 @@ export default function H2HGamePage() {
           })}
         </div>
       )}
+      {isLiveRivalry && daily?.paste && (
+        <div className="mt-8">
+          <PasteResultButton
+            game={daily}
+            onRecorded={() =>
+              listRivalDays(Number(id))
+                .then(setDays)
+                .catch(() => {})
+            }
+          />
+        </div>
+      )}
       {isLiveRivalry && (
         <div className="mt-8">
           <h2 className="mb-3 text-left text-lg font-semibold">Day by day</h2>
@@ -236,11 +269,24 @@ export default function H2HGamePage() {
               days={days}
               game={daily}
               friendName={nameFor(game.creator.id === me.id ? game.opponent : game.creator)}
+              today={today}
+              onReplay={() => {
+                setRevealDone(false)
+                setReplaying(true)
+              }}
             />
           ) : (
             <p className="text-center text-gray-500 dark:text-gray-400">
               {days ? "This game isn't available." : 'Loading…'}
             </p>
+          )}
+          {daily && (
+            <Link
+              to={`/games/${daily.key}/history`}
+              className="mt-4 flex h-[48px] items-center justify-center rounded-full bg-(--chip) text-[16px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+            >
+              Score history
+            </Link>
           )}
         </div>
       )}

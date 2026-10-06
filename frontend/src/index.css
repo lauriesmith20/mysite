@@ -77,10 +77,34 @@
   animation: hopper-x 800ms ease-out forwards;
 }
 
+/* Rivalry reveal: each number of the 3, 2, 1 (and the verdict) pops in. */
+@keyframes reveal-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.reveal-pop {
+  animation: reveal-pop 600ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hopper-x {
     animation-name: none;
     opacity: 0.9;
+  }
+
+  .reveal-pop {
+    animation: none;
   }
 }
 
