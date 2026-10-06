@@ -13,7 +13,7 @@ interface RivalRevealProps {
 }
 
 const STEP_MS = 800
-const VERDICT_MS = 3000
+const VERDICT_MS = 5000
 
 /**
  * The reveal of a day's result once you've both played: a full-screen 3, 2, 1, then the verdict with
@@ -75,7 +75,7 @@ export default function RivalReveal({ outcome, friendName, decidedBy, onDone, on
           <span className="mt-4 text-sm font-semibold text-white/60">Tap to close</span>
         </div>
       )}
-      {count === 0 && outcome !== 'draw' && <ScoreBurst kind={outcome === 'me' ? 'confetti' : 'miss'} />}
+      {count === 0 && outcome !== 'draw' && <ScoreBurst kind={outcome === 'me' ? 'confetti' : 'miss'} big />}
     </div>
   )
 }
