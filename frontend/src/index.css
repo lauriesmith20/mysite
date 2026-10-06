@@ -53,6 +53,37 @@
   }
 }
 
+/* Country Hopper: the big red X that flashes when a guess costs a life. */
+@keyframes hopper-x {
+  0% {
+    transform: scale(0.3) rotate(-12deg);
+    opacity: 0;
+  }
+  22% {
+    transform: scale(1.15) rotate(3deg);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.05);
+    opacity: 0;
+  }
+}
+
+.hopper-x {
+  animation: hopper-x 800ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hopper-x {
+    animation-name: none;
+    opacity: 0.9;
+  }
+}
+
 body {
   margin: 0;
   background: var(--bg);

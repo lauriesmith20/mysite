@@ -38,7 +38,9 @@ RESOURCE_GROUP="${RESOURCE_GROUP:-"rg-mysite"}"
 LOCATION="${LOCATION:-"uksouth"}"
 CONTAINER_ENV="${CONTAINER_ENV:-"cae-mysite"}"
 APP_NAME="${APP_NAME:-"mysite-backend"}"
-IMAGE_TAG="${IMAGE_TAG:-"$(date +%Y%m%d%H%M%S)"}"  # unique tag per deploy forces Azure to pull fresh
+# One fixed tag, overwritten on every deploy, so images don't pile up locally or in ghcr.io. The
+# Container App is pointed at the pushed image's digest (see step 2), which still forces a fresh pull.
+IMAGE_TAG="${IMAGE_TAG:-"latest"}"
 CPU="${CPU:-"0.25"}"
 MEMORY="${MEMORY:-"0.5Gi"}"
 MIN_REPLICAS="${MIN_REPLICAS:-"0"}"                        # scale-to-zero when idle
@@ -118,13 +120,21 @@ header "2 / Build & push Docker image → ghcr.io"
 info "Logging in to ghcr.io as '${GHCR_USER}'..."
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
+# Rebuilding the same tag orphans the previous image; remember it so it can be removed afterwards.
+PREVIOUS_IMAGE_ID="$(docker images -q "$FULL_IMAGE" 2>/dev/null || true)"
+
 info "Building image: ${FULL_IMAGE}"
 docker build --platform linux/amd64 -t "$FULL_IMAGE" -f "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}"
 
 info "Pushing image..."
 docker push "$FULL_IMAGE"
 
-success "Image pushed: ${FULL_IMAGE}"
+# Deploy by digest: the tag is reused, so the tag alone wouldn't change the Container App's
+# template and Azure would keep running the old image. The digest changes with every push.
+DEPLOY_IMAGE="$(docker inspect --format '{{index .RepoDigests 0}}' "$FULL_IMAGE")"
+[[ "$DEPLOY_IMAGE" == *@sha256:* ]] || error "Could not determine the pushed image digest (got '${DEPLOY_IMAGE}')."
+
+success "Image pushed: ${FULL_IMAGE} (${DEPLOY_IMAGE##*@})"
 
 # ── 2b. Database migrations ───────────────────────────────────────────────────
 header "2b / Run database migrations"
@@ -141,6 +151,13 @@ docker run --rm --platform linux/amd64 \
   "$FULL_IMAGE" upgrade head
 
 success "Migrations applied."
+
+# The previous build of this tag is now untagged and unused; remove it so disk doesn't fill up.
+CURRENT_IMAGE_ID="$(docker images -q "$FULL_IMAGE" 2>/dev/null || true)"
+if [[ -n "$PREVIOUS_IMAGE_ID" && "$PREVIOUS_IMAGE_ID" != "$CURRENT_IMAGE_ID" ]]; then
+  info "Removing superseded local image ${PREVIOUS_IMAGE_ID}..."
+  docker rmi "$PREVIOUS_IMAGE_ID" >/dev/null 2>&1 || warn "Could not remove the previous image (still in use?) — skipping."
+fi
 
 # ── 3. Container Apps Environment ─────────────────────────────────────────────
 header "3 / Container Apps Environment"
@@ -171,7 +188,7 @@ else
     --name              "$APP_NAME" \
     --resource-group    "$RESOURCE_GROUP" \
     --environment       "$CONTAINER_ENV" \
-    --image             "$FULL_IMAGE" \
+    --image             "$DEPLOY_IMAGE" \
     --registry-server   "ghcr.io" \
     --registry-username "$GHCR_USER" \
     --registry-password "$GHCR_TOKEN" \
@@ -217,7 +234,7 @@ az rest --method PATCH \
       \"template\": {
         \"containers\": [{
           \"name\": \"${APP_NAME}\",
-          \"image\": \"${FULL_IMAGE}\",
+          \"image\": \"${DEPLOY_IMAGE}\",
           \"resources\": { \"cpu\": ${CPU}, \"memory\": \"${MEMORY}\" },
           \"env\": [
             { \"name\": \"ENVIRONMENT\", \"value\": \"production\" },

@@ -24,6 +24,7 @@ import SettingsPage from './pages/SettingsPage'
 
 // Loaded on demand: pulls in the map libraries and country data.
 const CountryHopperPage = lazy(() => import('./pages/CountryHopperPage'))
+const CountryExplorerPage = lazy(() => import('./pages/CountryExplorerPage'))
 
 function SignedInRoutes() {
   return (
@@ -71,6 +72,16 @@ function App() {
           <PublicLayout>
             <Suspense fallback={<div className="p-12 text-center text-(--soft)">Loading…</div>}>
               <CountryHopperPage />
+            </Suspense>
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/country-hopper/explore"
+        element={
+          <PublicLayout>
+            <Suspense fallback={<div className="p-12 text-center text-(--soft)">Loading…</div>}>
+              <CountryExplorerPage />
             </Suspense>
           </PublicLayout>
         }

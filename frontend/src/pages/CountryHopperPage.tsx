@@ -1,110 +1,380 @@
-import { ArrowLeftRight, Minus, Plus } from 'lucide-react'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import Page from '../shared/layout/Page'
+import { Compass, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import CountryFlag from '../components/CountryFlag'
+import CountryPicker from '../components/CountryPicker'
+import ScoreBurst from '../components/ScoreBurst'
+import WorldMap, { HATCH_FILL, type MapLine } from '../components/WorldMap'
+import { loadWorld, type World } from '../lib/countryGraph'
 import {
-  loadWorld,
-  MAP_HEIGHT,
-  MAP_WIDTH,
-  shortestRoutes,
-  type Country,
-  type World,
-} from '../lib/countryGraph'
+  MAX_LIVES,
+  MAX_SUITCASES,
+  closestShortestRoute,
+  dateKey,
+  judgeGuess,
+  pickDailyPuzzle,
+  puzzleNumber,
+  shareText,
+  suitcasesFor,
+  type Puzzle,
+} from '../lib/countryHopperGame'
+import { buildHopperWorld, type HopperWorld } from '../lib/hopperWorld'
+import Page from '../shared/layout/Page'
 
-const FROM_COLOR = '#EC4060'
-const TO_COLOR = '#4A5BE0'
-const ROUTE_COLOR = '#F2C85A'
-const OTHER_ROUTE_COLOR = '#F7E2A4'
-const MAX_ZOOM = 40
+const START_COLOR = '#EC4060'
+const END_COLOR = '#4A5BE0'
+const YOURS_COLOR = '#F2C85A'
+const SHORTEST_COLOR = '#4CB87B'
 
-interface View {
-  k: number
-  x: number
-  y: number
+type Status = 'playing' | 'won' | 'lost'
+
+interface GameState {
+  /** Country ids: the start, then every hop accepted so far. */
+  path: number[]
+  lives: number
+  status: Status
 }
 
-// Zoom level beyond which the full-detail outlines replace the simplified ones.
-const FINE_ZOOM = 4
+// ── Saved progress (one game per day, so a refresh can't hand out fresh lives) ──────────────────
 
-// `h` is the visible height in map units: the viewport is MAP_WIDTH wide but can be taller than the
-// 960x500 map (portrait phones), in which case the map is centred vertically when zoomed out.
-function clampView(v: View, h: number): View {
-  const k = Math.min(MAX_ZOOM, Math.max(1, v.k))
-  const x = Math.min(0, Math.max(MAP_WIDTH - MAP_WIDTH * k, v.x))
-  const mapH = MAP_HEIGHT * k
-  const y = mapH <= h ? (h - mapH) / 2 : Math.min(0, Math.max(h - mapH, v.y))
-  return { k, x, y }
+const STORAGE_PREFIX = 'country-hopper:'
+
+function loadGame(day: string, names: string[], hopper: HopperWorld, puzzle: Puzzle): GameState | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_PREFIX + day) ?? 'null') as {
+      path?: string[]
+      lives?: number
+    } | null
+    if (!saved || !Array.isArray(saved.path) || typeof saved.lives !== 'number') return null
+    const ids = saved.path.map((name) => names.indexOf(name))
+    if (ids[0] !== puzzle.start) return null
+    // Replay the saved route through the rules so a stale or edited entry can't leave a bad state.
+    const path = [puzzle.start]
+    for (const id of ids.slice(1)) {
+      const outcome = judgeGuess(hopper.adjacency, path, puzzle.end, id)
+      if (id < 0 || (outcome !== 'hop' && outcome !== 'win')) return null
+      path.push(id)
+    }
+    const lives = Math.min(MAX_LIVES, Math.max(0, Math.floor(saved.lives)))
+    const status: Status = path[path.length - 1] === puzzle.end ? 'won' : lives === 0 ? 'lost' : 'playing'
+    return { path, lives, status }
+  } catch {
+    return null
+  }
 }
 
-// Default view: fill the available height (Europe/Africa centred) so portrait screens aren't mostly blank.
-function homeView(h: number): View {
-  const k = Math.max(1, h / MAP_HEIGHT)
-  return clampView({ k, x: MAP_WIDTH / 2 - MAP_WIDTH * 0.53 * k, y: 0 }, h)
+function saveGame(day: string, game: GameState, names: string[]) {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const stored = localStorage.key(i)
+      if (stored?.startsWith(STORAGE_PREFIX) && stored !== STORAGE_PREFIX + day) localStorage.removeItem(stored)
+    }
+    localStorage.setItem(
+      STORAGE_PREFIX + day,
+      JSON.stringify({ path: game.path.map((id) => names[id]), lives: game.lives }),
+    )
+  } catch {
+    // storage unavailable: the game still works, it just won't survive a refresh
+  }
 }
 
-// Zooms by `factor` keeping the map point under (cx, cy) (in viewport units) fixed.
-function zoomAt(v: View, factor: number, cx: number, cy: number, h: number): View {
-  const k = Math.min(MAX_ZOOM, Math.max(1, v.k * factor))
-  const ratio = k / v.k
-  return clampView({ k, x: cx - (cx - v.x) * ratio, y: cy - (cy - v.y) * ratio }, h)
-}
+// ── Pieces ───────────────────────────────────────────────────────────────────────────────────────
 
-// Frames every country on a shortest route so labels are readable straight away.
-function fitView(world: World, from: number, to: number, h: number): View {
-  const result = shortestRoutes(world.adjacency, from, to)
-  if (!result) return homeView(h)
-  const points = [...result.onAnyRoute].map((id) => world.countries[id].center)
-  const xs = points.map((p) => p[0])
-  const ys = points.map((p) => p[1])
-  const w = Math.max(Math.max(...xs) - Math.min(...xs), 60) + 80
-  const ht = Math.max(Math.max(...ys) - Math.min(...ys), 40) + 60
-  const k = Math.min(MAX_ZOOM, Math.max(1, Math.min(MAP_WIDTH / w, h / ht)))
-  const cx = (Math.max(...xs) + Math.min(...xs)) / 2
-  const cy = (Math.max(...ys) + Math.min(...ys)) / 2
-  return clampView({ k, x: MAP_WIDTH / 2 - cx * k, y: h / 2 - cy * k }, h)
-}
-
-const Land = memo(function Land({
-  countries,
-  fills,
-  fine,
-}: {
-  countries: Country[]
-  fills: Map<number, string>
-  fine: boolean
-}) {
+function Lives({ lives }: { lives: number }) {
   return (
-    <>
-      {countries.map((c) => (
-        <path
-          key={c.id}
-          d={fine ? c.dFine : c.d}
-          data-id={c.id}
-          fill={fills.get(c.id) ?? 'var(--land)'}
-          stroke="var(--card)"
-          strokeLinejoin="round"
-          className="cursor-pointer"
+    <div className="flex items-center gap-1" role="img" aria-label={`${lives} of ${MAX_LIVES} lives left`}>
+      {Array.from({ length: MAX_LIVES }, (_, i) => (
+        <X
+          key={i}
+          size={28}
+          strokeWidth={4}
+          aria-hidden="true"
+          className={`transition-colors duration-300 ${i < lives ? 'text-red-500' : 'text-(--chip)'}`}
         />
       ))}
-    </>
+    </div>
   )
-})
+}
 
-const roundButton =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-(--chip) text-(--ink) transition active:scale-[0.94]'
+/** The big red X that flashes when a guess costs a life. Mount with a fresh `key` each time. */
+function MissFlash() {
+  const [done, setDone] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setDone(true), 850)
+    return () => clearTimeout(timer)
+  }, [])
+  if (done) return null
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center" aria-hidden="true">
+      <X className="hopper-x h-56 w-56 text-red-500 drop-shadow-lg" strokeWidth={3.5} />
+    </div>
+  )
+}
+
+function EndpointCard(props: { caption: string; name: string; code: string; color: string; light?: boolean }) {
+  return (
+    <div
+      className={`flex items-center gap-3.5 rounded-[20px] px-4 py-3 ${props.light ? 'text-white' : 'text-[#1b1220]'}`}
+      style={{ backgroundColor: props.color }}
+    >
+      <CountryFlag code={props.code} className="h-8 w-12" />
+      <div className="min-w-0">
+        <span className="text-[11px] font-bold">{props.caption}</span>
+        <span className="block truncate text-[22px] font-extrabold leading-tight">{props.name}</span>
+      </div>
+    </div>
+  )
+}
+
+function Suitcases({ count }: { count: number }) {
+  return (
+    <div className="flex gap-1 text-4xl" role="img" aria-label={`${count} of ${MAX_SUITCASES} suitcases`}>
+      {Array.from({ length: MAX_SUITCASES }, (_, i) => (
+        <span key={i} className={i < count ? '' : 'opacity-25 grayscale'} aria-hidden="true">
+          🧳
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function LegendChip({ swatch, label }: { swatch: string; label: string }) {
+  return (
+    <span className="flex items-center gap-2 text-[13px] font-bold">
+      <span className="h-4 w-4 rounded-[5px] shadow-[0_0_0_1px_rgb(0_0_0/0.15)]" style={{ background: swatch }} />
+      {label}
+    </span>
+  )
+}
+
+// ── One day's round ──────────────────────────────────────────────────────────────────────────────
+
+function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWorld; puzzle: Puzzle; day: string }) {
+  const names = useMemo(() => world.countries.map((c) => c.name), [world])
+  const [game, setGame] = useState<GameState>(
+    () => loadGame(day, names, hopper, puzzle) ?? { path: [puzzle.start], lives: MAX_LIVES, status: 'playing' },
+  )
+  const [message, setMessage] = useState<string | null>(null)
+  const [shake, setShake] = useState(0)
+  const [miss, setMiss] = useState(0)
+  const [copied, setCopied] = useState(false)
+  const listRef = useRef<HTMLOListElement>(null)
+
+  useEffect(() => saveGame(day, game, names), [day, game, names])
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+  }, [game.path.length])
+
+  const label = (id: number) => hopper.labels[id]
+  const current = game.path[game.path.length - 1]
+  const borders = game.path.length - 1
+  const visited = useMemo(() => new Set(game.path), [game.path])
+  const playing = game.status === 'playing'
+  const suitcases = game.status === 'won' ? suitcasesFor(puzzle.shortest, borders) : 0
+
+  function submit(id: number) {
+    if (!playing) return
+    const outcome = judgeGuess(hopper.adjacency, game.path, puzzle.end, id)
+    if (outcome === 'repeat') {
+      setMessage(`${label(id)} is already on your route.`)
+      setShake((n) => n + 1)
+    } else if (outcome === 'invalid') {
+      const lives = game.lives - 1
+      setGame({ ...game, lives, status: lives === 0 ? 'lost' : 'playing' })
+      setMessage(`${label(id)} doesn't border ${label(current)}. You lost a life.`)
+      setMiss((n) => n + 1)
+      setShake((n) => n + 1)
+    } else {
+      setMessage(null)
+      setGame({ ...game, path: [...game.path, id], status: outcome === 'win' ? 'won' : 'playing' })
+    }
+  }
+
+  function noMatch(text: string) {
+    setMessage(`There's no country called "${text}".`)
+    setShake((n) => n + 1)
+  }
+
+  async function share() {
+    const text = shareText({
+      number: puzzleNumber(day),
+      suitcases,
+      livesLeft: game.lives,
+      url: `${window.location.origin}${import.meta.env.BASE_URL}#/country-hopper`,
+    })
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      window.prompt('Copy your result:', text)
+    }
+  }
+
+  // Result map: your route in gold, the closest shortest route in green, hatched where they overlap.
+  const shortestRoute = useMemo(
+    () => (playing ? [] : closestShortestRoute(hopper.adjacency, puzzle.start, puzzle.end, game.path)),
+    [playing, hopper, puzzle, game.path],
+  )
+  const fills = useMemo(() => {
+    const map = new Map<number, string>()
+    const yours = new Set(game.path)
+    const shortest = new Set(shortestRoute)
+    yours.forEach((id) => map.set(id, shortest.has(id) ? HATCH_FILL : YOURS_COLOR))
+    shortest.forEach((id) => {
+      if (!yours.has(id)) map.set(id, SHORTEST_COLOR)
+    })
+    map.set(puzzle.start, START_COLOR)
+    map.set(puzzle.end, END_COLOR)
+    return map
+  }, [game.path, shortestRoute, puzzle])
+  const lines = useMemo<MapLine[]>(
+    () => [
+      { ids: game.path, stroke: '#B8860B', width: 3 },
+      { ids: shortestRoute, stroke: '#1F7A4A', width: 3.5, dash: [7, 6] },
+    ],
+    [game.path, shortestRoute],
+  )
+  const framed = useMemo(
+    () => ({ ids: [...new Set([...game.path, ...shortestRoute])], key: 1 }),
+    [game.path, shortestRoute],
+  )
+
+  return (
+    <div className="flex flex-col gap-3">
+      {miss > 0 && <MissFlash key={miss} />}
+
+      {/* While playing, this block fills the screen height (never less than 34rem, which leaves the
+          hops list room for 5 rows) so the list scrolls inside it and the typing bar stays in view. */}
+      <div className={`flex flex-col gap-3 ${playing ? 'h-[max(34rem,calc(100svh-13.5rem))]' : ''}`}>
+        <div className="flex items-center justify-between">
+          <Lives lives={game.lives} />
+          <span className="text-sm font-bold text-(--soft)">
+            {borders} hop{borders === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        <EndpointCard
+          caption="Start"
+          name={label(puzzle.start)}
+          code={hopper.codes[puzzle.start]}
+          color={START_COLOR}
+        />
+
+        <ol
+          ref={listRef}
+          aria-label="Hops so far"
+          className={`flex min-h-[15.5rem] flex-col gap-1 overflow-y-auto rounded-[22px] bg-(--card) p-2 shadow-(--card-shadow) ${
+            playing ? 'flex-1' : 'max-h-[26rem]'
+          }`}
+        >
+          {borders === 0 ? (
+            <li className="m-auto max-w-[16rem] p-4 text-center text-[15px] font-semibold text-(--soft)">
+              Your route starts here. Type a country that borders {label(puzzle.start)}.
+            </li>
+          ) : (
+            game.path.slice(1).map((id, i) => (
+              <li
+                key={id}
+                className={`flex items-center gap-3 rounded-[14px] px-3 py-2 ${
+                  id === current && playing ? 'bg-(--chip)' : ''
+                }`}
+              >
+                <span className="w-5 shrink-0 text-center text-sm font-extrabold text-(--soft)">{i + 1}</span>
+                <CountryFlag code={hopper.codes[id]} className="h-6 w-9" />
+                <span className="min-w-0 flex-1 truncate text-[17px] font-extrabold">{label(id)}</span>
+              </li>
+            ))
+          )}
+        </ol>
+
+        <EndpointCard
+          caption="Destination"
+          name={label(puzzle.end)}
+          code={hopper.codes[puzzle.end]}
+          color={END_COLOR}
+          light
+        />
+
+        {playing && (
+          <>
+            <p className="min-h-5 text-center text-sm font-bold text-(--soft)" aria-live="polite">
+              {message}
+            </p>
+            <CountryPicker
+              candidates={hopper.candidates}
+              codeOf={(id) => hopper.codes[id]}
+              visited={visited}
+              onSubmit={submit}
+              onNoMatch={noMatch}
+              shake={shake}
+            />
+          </>
+        )}
+      </div>
+
+      {!playing && (
+        <>
+          <section className="relative flex flex-col items-center gap-3 rounded-[24px] bg-(--card) p-5 text-center shadow-(--card-shadow)">
+            {game.status === 'won' && <ScoreBurst kind="confetti" />}
+            <h2 className="text-2xl font-extrabold">{game.status === 'won' ? 'You made it!' : 'Out of lives'}</h2>
+            <Suitcases count={suitcases} />
+            <p className="text-[15px] font-semibold text-(--soft)">
+              {game.status === 'won'
+                ? borders === puzzle.shortest
+                  ? `${borders} borders: the shortest possible route!`
+                  : `${borders} borders. The shortest route is ${puzzle.shortest}.`
+                : `The shortest route was ${puzzle.shortest} borders.`}
+            </p>
+            <button
+              type="button"
+              onClick={share}
+              className="h-[54px] w-full rounded-full bg-(--ink) text-[17px] font-extrabold text-(--bg) transition active:scale-[0.97]"
+            >
+              {copied ? 'Copied to clipboard!' : 'Share result'}
+            </button>
+            <p className="text-xs font-semibold text-(--soft)">A new puzzle arrives tomorrow.</p>
+          </section>
+
+          <WorldMap
+            world={world}
+            fills={fills}
+            lines={lines}
+            labelIds={framed.ids}
+            frame={framed}
+            hatch={{ a: YOURS_COLOR, b: SHORTEST_COLOR }}
+            svgClassName="h-[48svh] md:aspect-[960/500] md:h-auto"
+            ariaLabel="World map showing your route in gold and the shortest route in green."
+          />
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+            <LegendChip swatch={YOURS_COLOR} label="Your route" />
+            <LegendChip swatch={SHORTEST_COLOR} label="Shortest route" />
+            <LegendChip
+              swatch={`repeating-linear-gradient(45deg, ${YOURS_COLOR} 0 4px, ${SHORTEST_COLOR} 4px 8px)`}
+              label="Both"
+            />
+          </div>
+          <Link
+            to="/country-hopper/explore"
+            className="mt-1 flex h-[54px] items-center justify-center rounded-full bg-(--chip) text-[17px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+          >
+            Explore other routes
+          </Link>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────────────────────────
 
 export default function CountryHopperPage() {
   const [world, setWorld] = useState<World | null>(null)
   const [error, setError] = useState(false)
-  const [from, setFrom] = useState<number | null>(null)
-  const [to, setTo] = useState<number | null>(null)
-  const [selected, setSelected] = useState(0)
-  const [view, setView] = useState<View>({ k: 1, x: 0, y: 0 })
-  const [viewH, setViewH] = useState(MAP_HEIGHT)
-  const [unit, setUnit] = useState(1) // map units per CSS pixel, so lines/labels keep a fixed on-screen size
-  const svgRef = useRef<SVGSVGElement>(null)
-  const touched = useRef(false) // once the user moves the map we stop re-centring it on resize
-  const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const gesture = useRef({ moved: 0, startId: null as number | null, pinchDist: 0 })
+  const [params] = useSearchParams()
+  // Dev builds can preview any day's puzzle with ?date=YYYY-MM-DD.
+  const day = (import.meta.env.DEV && params.get('date')) || dateKey()
 
   useEffect(() => {
     loadWorld()
@@ -112,328 +382,33 @@ export default function CountryHopperPage() {
       .catch(() => setError(true))
   }, [])
 
-  const sortedCountries = useMemo(
-    () => (world ? [...world.countries].sort((a, b) => a.name.localeCompare(b.name)) : []),
-    [world],
-  )
-
-  const options = useMemo(
-    () =>
-      sortedCountries.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.name}
-        </option>
-      )),
-    [sortedCountries],
-  )
-
-  const result = useMemo(
-    () => (world && from !== null && to !== null ? shortestRoutes(world.adjacency, from, to) : null),
-    [world, from, to],
-  )
-  const route = result?.routes[Math.min(selected, (result?.routes.length ?? 1) - 1)] ?? null
-
-  const fills = useMemo(() => {
-    const map = new Map<number, string>()
-    result?.onAnyRoute.forEach((id) => map.set(id, OTHER_ROUTE_COLOR))
-    route?.forEach((id) => map.set(id, ROUTE_COLOR))
-    if (from !== null) map.set(from, FROM_COLOR)
-    if (to !== null) map.set(to, TO_COLOR)
-    return map
-  }, [result, route, from, to])
-
-  const nameOf = (id: number | null) => (id === null || !world ? null : world.countries[id].name)
-
-  function applySelection(nextFrom: number | null, nextTo: number | null) {
-    touched.current = true
-    setFrom(nextFrom)
-    setTo(nextTo)
-    setSelected(0)
-    if (world && nextFrom !== null && nextTo !== null && nextFrom !== nextTo) {
-      setView(fitView(world, nextFrom, nextTo, viewH))
-    }
-  }
-
-  function pick(id: number) {
-    if (from === null || to !== null) applySelection(id, null)
-    else if (id !== from) applySelection(from, id)
-  }
-
-  // Track the map's on-screen aspect ratio so it can fill a tall phone screen instead of letterboxing.
-  useEffect(() => {
-    const svg = svgRef.current
-    if (!svg) return
-    const measure = () => {
-      const rect = svg.getBoundingClientRect()
-      if (rect.width === 0) return
-      const h = MAP_WIDTH * (rect.height / rect.width)
-      setViewH(h)
-      setUnit(MAP_WIDTH / rect.width)
-      setView((v) => (touched.current ? clampView(v, h) : homeView(h)))
-    }
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(svg)
-    return () => observer.disconnect()
-  }, [world])
-
-  // Wheel zoom needs a non-passive listener so the page doesn't scroll underneath.
-  useEffect(() => {
-    const svg = svgRef.current
-    if (!svg) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      touched.current = true
-      const rect = svg.getBoundingClientRect()
-      const cx = ((e.clientX - rect.left) / rect.width) * MAP_WIDTH
-      const cy = ((e.clientY - rect.top) / rect.height) * viewH
-      setView((v) => zoomAt(v, Math.exp(-e.deltaY * 0.0015), cx, cy, viewH))
-    }
-    svg.addEventListener('wheel', onWheel, { passive: false })
-    return () => svg.removeEventListener('wheel', onWheel)
-  }, [world, viewH])
-
-  function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    const g = gesture.current
-    if (pointers.current.size === 1) {
-      g.moved = 0
-      const id = (e.target as SVGElement).dataset.id
-      g.startId = id === undefined ? null : Number(id)
-    }
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()]
-      g.pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
-      g.moved = 99
-    }
-  }
-
-  function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
-    const prev = pointers.current.get(e.pointerId)
-    if (!prev || !svgRef.current) return
-    const rect = svgRef.current.getBoundingClientRect()
-    const unit = MAP_WIDTH / rect.width
-    const g = gesture.current
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()]
-      const dist = Math.hypot(a.x - b.x, a.y - b.y)
-      if (g.pinchDist > 0) {
-        const cx = ((a.x + b.x) / 2 - rect.left) * unit
-        const cy = ((a.y + b.y) / 2 - rect.top) * unit
-        const factor = dist / g.pinchDist
-        setView((v) => zoomAt(v, factor, cx, cy, viewH))
-      }
-      g.pinchDist = dist
-      return
-    }
-
-    const dx = e.clientX - prev.x
-    const dy = e.clientY - prev.y
-    g.moved += Math.abs(dx) + Math.abs(dy)
-    if (g.moved > 6) touched.current = true
-    if (g.moved > 6) setView((v) => clampView({ ...v, x: v.x + dx * unit, y: v.y + dy * unit }, viewH))
-  }
-
-  function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
-    const g = gesture.current
-    if (pointers.current.size === 1 && g.moved <= 6 && g.startId !== null) pick(g.startId)
-    pointers.current.delete(e.pointerId)
-    g.pinchDist = 0
-  }
-
-  function zoomBy(factor: number) {
-    touched.current = true
-    setView((v) => zoomAt(v, factor, MAP_WIDTH / 2, viewH / 2, viewH))
-  }
-
-  const strokeUnit = unit / view.k
-  const polyline = (ids: number[]) =>
-    world ? ids.map((id) => world.countries[id].center.map((n) => n.toFixed(1)).join(',')).join(' ') : ''
-  const headline = result ? `${result.borders} border${result.borders === 1 ? '' : 's'} to cross` : ''
+  const hopper = useMemo(() => (world ? buildHopperWorld(world) : null), [world])
+  const puzzle = useMemo(() => (hopper ? pickDailyPuzzle(hopper.adjacency, day) : null), [hopper, day])
 
   return (
     <Page
       title="Country Hopper"
-      subtitle="Pick two countries on the map and see the fewest land borders between them."
-      subtitleClassName="hidden text-sm md:block"
-      width="wide"
-      contentClassName="flex flex-col gap-2.5 md:gap-3"
-    >
-
-      <div className="flex items-center gap-2">
-        <label className="flex min-w-0 flex-1 flex-col rounded-[18px] px-3.5 py-2 text-[#1b1220]" style={{ backgroundColor: FROM_COLOR }}>
-          <span className="text-[11px] font-bold">From</span>
-          <select
-            value={from ?? ''}
-            onChange={(e) => applySelection(e.target.value === '' ? null : Number(e.target.value), to)}
-            className="w-full min-w-0 truncate bg-transparent text-[17px] font-extrabold outline-none"
-          >
-            <option value="">Tap a country</option>
-            {options}
-          </select>
-        </label>
-        <button
-          type="button"
-          aria-label="Swap countries"
-          onClick={() => applySelection(to, from)}
-          className={roundButton}
+      subtitle={`Daily puzzle #${puzzleNumber(day)}: hop from border to border to reach the destination.`}
+      subtitleClassName="text-sm"
+      actions={
+        <Link
+          to="/country-hopper/explore"
+          aria-label="Route explorer"
+          className="p-2 text-gray-400 transition hover:text-gray-900 dark:hover:text-gray-100"
         >
-          <ArrowLeftRight size={20} aria-hidden="true" />
-        </button>
-        <label className="flex min-w-0 flex-1 flex-col rounded-[18px] px-3.5 py-2 text-white" style={{ backgroundColor: TO_COLOR }}>
-          <span className="text-[11px] font-bold">To</span>
-          <select
-            value={to ?? ''}
-            onChange={(e) => applySelection(from, e.target.value === '' ? null : Number(e.target.value))}
-            className="w-full min-w-0 truncate bg-transparent text-[17px] font-extrabold outline-none [&>option]:text-black"
-          >
-            <option value="">Tap a country</option>
-            {options}
-          </select>
-        </label>
-      </div>
-
-      <div className="relative overflow-hidden rounded-[28px] bg-(--card) p-1.5 shadow-(--card-shadow)">
-        {error ? (
-          <p className="p-6 text-center text-(--soft)">Couldn't load the map. Refresh to try again.</p>
-        ) : !world ? (
-          <p className="p-6 text-center text-(--soft)">Loading map…</p>
-        ) : (
-          <>
-            <svg
-              ref={svgRef}
-              viewBox={`0 0 ${MAP_WIDTH} ${viewH}`}
-              role="img"
-              aria-label="World map. Tap two countries, or use the From and To lists, to find the shortest land route."
-              className="block h-[56svh] w-full touch-none select-none rounded-[20px] md:aspect-[960/500] md:h-auto"
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-            >
-              <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
-                <g strokeWidth={0.8 * strokeUnit}>
-                  <Land countries={world.countries} fills={fills} fine={view.k >= FINE_ZOOM} />
-                </g>
-                <g pointerEvents="none" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  {result?.routes.map((r, i) =>
-                    i === selected ? null : (
-                      <polyline key={i} points={polyline(r)} stroke="var(--ink)" strokeOpacity={0.28} strokeWidth={2.5 * strokeUnit} />
-                    ),
-                  )}
-                  {route && (
-                    <polyline
-                      points={polyline(route)}
-                      stroke="var(--ink)"
-                      strokeWidth={3.5 * strokeUnit}
-                      strokeDasharray={`${7 * strokeUnit} ${6 * strokeUnit}`}
-                    />
-                  )}
-                </g>
-                <g pointerEvents="none" textAnchor="middle" dominantBaseline="central">
-                  {result &&
-                    [...result.onAnyRoute].map((id) => (
-                      <text
-                        key={id}
-                        x={world.countries[id].center[0]}
-                        y={world.countries[id].center[1]}
-                        fontSize={12 * strokeUnit}
-                        fontWeight={800}
-                        fill="#1b1220"
-                        stroke="rgb(255 255 255 / 0.7)"
-                        strokeWidth={3 * strokeUnit}
-                        paintOrder="stroke"
-                      >
-                        {world.countries[id].name}
-                      </text>
-                    ))}
-                </g>
-              </g>
-            </svg>
-            <div className="absolute bottom-5 right-5 flex flex-col gap-1.5">
-              <button type="button" aria-label="Zoom in" onClick={() => zoomBy(1.6)} className={roundButton}>
-                <Plus size={20} aria-hidden="true" />
-              </button>
-              <button type="button" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.6)} className={roundButton}>
-                <Minus size={20} aria-hidden="true" />
-              </button>
-            </div>
-            {view.k > homeView(viewH).k + 0.05 && (
-              <button
-                type="button"
-                onClick={() => setView(homeView(viewH))}
-                className="absolute bottom-5 left-5 h-9 rounded-full bg-(--chip) px-3.5 text-[13px] font-bold text-(--ink)"
-              >
-                Reset view
-              </button>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2.5 rounded-[22px] bg-[#8EC9F0] px-[18px] py-3.5 text-[#0E2233]" aria-live="polite">
-        {from === null || to === null ? (
-          <>
-            <span className="text-xs font-bold">{from === null ? 'Tap the map' : `Starting from ${nameOf(from)}`}</span>
-            <span className="text-[22px] font-extrabold">
-              {from === null ? 'Pick two countries' : 'Now pick a destination'}
-            </span>
-          </>
-        ) : from === to ? (
-          <span className="text-[22px] font-extrabold">That's the same country!</span>
-        ) : !result ? (
-          <>
-            <span className="text-xs font-bold">
-              {nameOf(from)} → {nameOf(to)}
-            </span>
-            <span className="text-[22px] font-extrabold">No land route</span>
-            <span className="text-sm">You can't get between these without crossing the sea.</span>
-          </>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span className="text-xs font-bold">
-                {result.totalRoutes} shortest route{result.totalRoutes === 1 ? '' : 's'}
-              </span>
-              <span className="text-xl font-extrabold">{headline}</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {result.routes.map((r, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-pressed={i === selected}
-                  onClick={() => setSelected(i)}
-                  className={`flex items-start gap-2.5 rounded-[14px] px-3 py-2.5 text-left transition active:scale-[0.99] ${
-                    i === selected ? 'bg-white/95 ring-2 ring-[#0E2233]' : 'bg-white/45'
-                  }`}
-                >
-                  <span className="shrink-0 text-[11px] font-extrabold opacity-70">{i + 1}</span>
-                  <span className="text-[13px] font-extrabold leading-snug">
-                    {r.map((id) => world!.countries[id].name).join(' → ')}
-                  </span>
-                </button>
-              ))}
-              {result.totalRoutes > result.routes.length && (
-                <p className="text-xs font-semibold">+{result.totalRoutes - result.routes.length} more routes not listed</p>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => {
-          applySelection(null, null)
-          setView(homeView(viewH))
-        }}
-        className="mt-1 h-[54px] rounded-full bg-(--ink) text-[17px] font-extrabold text-(--bg) transition active:scale-[0.97]"
-      >
-        Clear selection
-      </button>
+          <Compass className="h-6 w-6" aria-hidden="true" />
+        </Link>
+      }
+    >
+      {error ? (
+        <p className="text-center text-(--soft)">Couldn't load the map. Refresh to try again.</p>
+      ) : !world || !hopper ? (
+        <p className="text-center text-(--soft)">Loading map…</p>
+      ) : !puzzle ? (
+        <p className="text-center text-(--soft)">Couldn't set today's puzzle. Try again later.</p>
+      ) : (
+        <Round key={day} world={world} hopper={hopper} puzzle={puzzle} day={day} />
+      )}
     </Page>
   )
 }
