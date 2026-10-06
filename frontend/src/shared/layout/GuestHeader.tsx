@@ -1,4 +1,5 @@
 import { Moon, Sun } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { signIn } from '../../lib/returningUser'
 import { useTheme } from '../../lib/theme'
 
@@ -7,9 +8,10 @@ export default function GuestHeader() {
   const { dark, toggle } = useTheme()
   return (
     <header className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 px-5 py-4 md:px-12">
-      <a href="/" className="text-xl font-extrabold text-(--ink)">
+      {/* A router Link, not href="/": the site lives under /mysite/, so a bare "/" is the host root. */}
+      <Link to="/" className="text-xl font-extrabold text-(--ink)">
         Laurie's Website
-      </a>
+      </Link>
       <div className="flex items-center gap-2">
         <button
           type="button"
