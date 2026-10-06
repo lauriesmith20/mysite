@@ -60,6 +60,7 @@ export default function RivalDayList({
   friendName,
   today,
   onReplay,
+  concealed,
 }: {
   days: RivalDay[]
   game: DailyGameInfo
@@ -67,6 +68,8 @@ export default function RivalDayList({
   /** Today's date (YYYY-MM-DD); with `onReplay`, today's decided day gets a "Replay" link. */
   today?: string
   onReplay?: () => void
+  /** A day whose result is being revealed elsewhere on the page, so it mustn't show yet. */
+  concealed?: string
 }) {
   if (days.length === 0) {
     return (
@@ -88,7 +91,10 @@ export default function RivalDayList({
   return (
     <ul className="flex flex-col gap-2.5 text-left">
       {days.map((day) => {
-        const outcome = outcomeLine(day, friendName, game.paste !== undefined)
+        const hide = day.puzzle_date === concealed
+        const outcome = hide
+          ? { text: 'Revealing…', tone: 'neutral' as const }
+          : outcomeLine(day, friendName, game.paste !== undefined)
         return (
           <li
             key={day.puzzle_date}
@@ -103,14 +109,18 @@ export default function RivalDayList({
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-bold text-(--soft)">You</span>
-                <Result game={game} result={day.mine} hiddenLabel="Not played" />
+                <Result game={game} result={hide ? null : day.mine} hiddenLabel={hide ? 'Played ✓' : 'Not played'} />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="truncate text-[11px] font-bold text-(--soft)">{friendName}</span>
-                <Result game={game} result={day.theirs} hiddenLabel={day.their_played ? 'Played ✓' : 'Not played'} />
+                <Result
+                  game={game}
+                  result={hide ? null : day.theirs}
+                  hiddenLabel={day.their_played ? 'Played ✓' : 'Not played'}
+                />
               </div>
             </div>
-            {onReplay && day.winner !== null && day.puzzle_date === today && (
+            {onReplay && day.winner !== null && day.puzzle_date === today && !hide && (
               <button
                 type="button"
                 onClick={onReplay}

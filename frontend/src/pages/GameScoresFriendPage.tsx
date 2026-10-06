@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import Page from '../shared/layout/Page'
 import ChallengeModal from '../components/ChallengeModal'
 import NewGameModal from '../components/NewGameModal'
+import ScoreBar, { FRIEND_COLOR, ME_COLOR } from '../components/ScoreBar'
 import { useAuth } from '../shared/auth/AuthGate'
 import { listFriends, type Friend } from '../lib/friends'
 import {
@@ -14,9 +15,6 @@ import {
   listGamesWithFriend,
   type Game,
 } from '../lib/gameScores'
-
-const ME_COLOR = '#EC4060'
-const FRIEND_COLOR = '#4A5BE0'
 
 function nameFor(friend: Friend) {
   return friend.nickname?.trim() || friend.display_name || friend.email
@@ -30,15 +28,6 @@ function timeAgo(iso: string | null): string {
   if (days < 7) return `${days} days ago`
   if (days < 14) return 'last week'
   return `${Math.floor(days / 7)} weeks ago`
-}
-
-function Bar({ mine, theirs }: { mine: number; theirs: number }) {
-  return (
-    <div className="flex h-2 gap-[3px] overflow-hidden rounded bg-(--chip)">
-      <div style={{ flexGrow: mine, backgroundColor: ME_COLOR }} />
-      <div style={{ flexGrow: theirs, backgroundColor: FRIEND_COLOR }} />
-    </div>
-  )
 }
 
 export default function GameScoresFriendPage() {
@@ -127,10 +116,7 @@ export default function GameScoresFriendPage() {
             <span className="max-w-full truncate text-[15px] font-extrabold">{friendName}</span>
           </div>
         </div>
-        <div className="flex h-3 gap-[3px] overflow-hidden rounded-md">
-          <div style={{ flexGrow: totalMine, backgroundColor: ME_COLOR }} />
-          <div style={{ flexGrow: totalTheirs, backgroundColor: FRIEND_COLOR }} />
-        </div>
+        <ScoreBar mine={totalMine} theirs={totalTheirs} className="h-3" />
         <p className="text-[13px] text-(--soft)">
           {rows.length} game{rows.length === 1 ? '' : 's'} · {leader}
         </p>
@@ -222,7 +208,7 @@ export default function GameScoresFriendPage() {
                   </span>
                 </div>
               </div>
-              <Bar mine={mine} theirs={theirs} />
+              <ScoreBar mine={mine} theirs={theirs} />
             </Link>
           ))}
           {rows.length === 0 && <p className="text-(--soft)">No games yet — add the first one.</p>}

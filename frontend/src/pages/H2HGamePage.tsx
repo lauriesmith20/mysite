@@ -22,6 +22,7 @@ import EditGameModal from '../components/EditGameModal'
 import PasteResultButton from '../components/PasteResultButton'
 import RivalDayList from '../components/RivalDayList'
 import RivalReveal from '../components/RivalReveal'
+import ScoreBar from '../components/ScoreBar'
 import ScoreBurst from '../components/ScoreBurst'
 import { useAuth } from '../shared/auth/AuthGate'
 
@@ -131,9 +132,18 @@ export default function H2HGamePage() {
   const locked = !isChallenge && game.is_daily && hasUpdatedToday(game)
   const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
   // You are always on the left, whichever side of the game you were stored as.
+  // While today's result is being revealed, the tally holds back the point it will award.
+  const concealing = showReveal ? todayDecided?.winner : null
+  const iAmCreator = game.creator.id === me.id
   const sides = [
-    { player: game.creator, score: game.creator_score },
-    { player: game.opponent, score: game.opponent_score },
+    {
+      player: game.creator,
+      score: Math.max(0, game.creator_score - (concealing === (iAmCreator ? 'me' : 'them') ? 1 : 0)),
+    },
+    {
+      player: game.opponent,
+      score: Math.max(0, game.opponent_score - (concealing === (iAmCreator ? 'them' : 'me') ? 1 : 0)),
+    },
   ]
   if (game.opponent.id === me.id) sides.reverse()
 
@@ -171,6 +181,7 @@ export default function H2HGamePage() {
           onDone={() => {
             setRevealDone(true)
             setReplaying(false)
+            getGame(game.id).then(setGame)
           }}
         />
       )}
@@ -249,15 +260,20 @@ export default function H2HGamePage() {
           })}
         </div>
       )}
+      {!pendingChallenge && (
+        <ScoreBar mine={sides[0].score} theirs={sides[1].score} className="mx-auto mt-5 h-3 max-w-xs" />
+      )}
       {isLiveRivalry && daily?.paste && (
         <div className="mt-8">
           <PasteResultButton
             game={daily}
-            onRecorded={() =>
+            onRecorded={() => {
+              // A new result can decide the day, so refresh the tally as well as the day list.
+              getGame(Number(id)).then(setGame)
               listRivalDays(Number(id))
                 .then(setDays)
                 .catch(() => {})
-            }
+            }}
           />
         </div>
       )}
@@ -270,6 +286,7 @@ export default function H2HGamePage() {
               game={daily}
               friendName={nameFor(game.creator.id === me.id ? game.opponent : game.creator)}
               today={today}
+              concealed={showReveal ? today : undefined}
               onReplay={() => {
                 setRevealDone(false)
                 setReplaying(true)

@@ -333,3 +333,24 @@ def test_wordle_rivalry_draws_on_equal_guesses_and_fewer_guesses_wins() -> None:
     listed = call(2, "get", "/api/game-scores/with/3").json()
     rivalry = next(g for g in listed if g["id"] == game["id"])
     assert (rivalry["creator_score"], rivalry["opponent_score"]) == (1, 0)
+
+
+def test_points_carried_over_from_a_hand_scored_game_add_to_days_won() -> None:
+    from backend.features.game_scores.models import Game
+
+    befriend(4, 5)
+    game = challenge(4, 5, key="wordle")
+    accept(5, game["id"])
+    with SessionLocal() as db:
+        row = db.get(Game, game["id"])
+        assert row is not None
+        row.creator_score, row.opponent_score = 49, 41
+        db.commit()
+
+    today = _today()
+    play_wordle(4, today, 3)
+    play_wordle(5, today, 4)
+
+    listed = call(4, "get", "/api/game-scores/with/5").json()
+    rivalry = next(g for g in listed if g["id"] == game["id"])
+    assert (rivalry["creator_score"], rivalry["opponent_score"]) == (50, 41)

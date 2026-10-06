@@ -37,9 +37,12 @@ def _game_read(game: Game, db: Session) -> GameRead:
     assert creator is not None and opponent is not None
     creator_score, opponent_score, last_updated = game.creator_score, game.opponent_score, game.last_updated
     if daily_rivalry.is_active_rivalry(game):
-        # Scores count days won, worked out from both players' daily results.
+        # Scores count days won, worked out from both players' daily results, on top of any points the
+        # game carried over from before it was linked (a hand-scored game converted into a rivalry).
         tally = daily_rivalry.tally(daily_rivalry.rival_days(db, game))
-        creator_score, opponent_score, last_updated = tally.creator_score, tally.opponent_score, tally.last_played
+        creator_score += tally.creator_score
+        opponent_score += tally.opponent_score
+        last_updated = tally.last_played or last_updated
     elif game.daily_game_key is not None:
         creator_score, opponent_score, last_updated = 0, 0, None  # a challenge nobody has accepted yet
     return GameRead(
