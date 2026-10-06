@@ -47,6 +47,12 @@ class ChallengeCreate(BaseModel):
     daily_game_key: str
 
 
+class ChallengeAccept(BaseModel):
+    #: The accepter's local date (YYYY-MM-DD): the rivalry counts from this puzzle day, so today
+    #: counts even if it was already played. Defaults to today in UTC.
+    local_date: datetime.date | None = None
+
+
 class ChallengeRead(BaseModel):
     """A pending challenge waiting for the caller to accept or decline."""
 

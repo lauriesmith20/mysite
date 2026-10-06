@@ -1,7 +1,8 @@
 """Rivalries over built-in daily games (see features/daily_games): who won each puzzle day.
 
 A rivalry game's scores aren't tapped in by hand. They are worked out from both players' daily
-results, counting only days both played after the challenge was accepted, one point per day won.
+results: every puzzle day from the day the rivalry started (including that day, even if a result was
+recorded before the challenge was accepted) on which both played, one point per day won.
 """
 import datetime
 from dataclasses import dataclass
@@ -31,27 +32,28 @@ def is_active_rivalry(game: Game) -> bool:
     return game.daily_game_key is not None and game.challenge_status == ACCEPTED
 
 
-def _naive_utc(moment: datetime.datetime) -> datetime.datetime:
-    # Timestamps are stored as naive UTC; make sure both sides of every comparison are.
-    return moment.replace(tzinfo=None)
+def start_date(game: Game) -> datetime.date | None:
+    """The first puzzle day that counts: the accepter's local date, else the day it was accepted (UTC)."""
+    if game.started_on is not None:
+        return game.started_on
+    return game.accepted_at.date() if game.accepted_at is not None else None
 
 
 def counted_results(db: Session, game: Game, account_id: int) -> dict[datetime.date, DailyGameResult]:
     """An account's results that count towards this rivalry, by puzzle day.
 
-    Only results recorded after the challenge was accepted, for puzzle days from that day on, so
-    nothing played before the rivalry started is counted.
+    Every result for a puzzle day on or after the day the rivalry started, whenever during that day
+    it was recorded, so playing before accepting doesn't lose the day. Earlier days never count.
     """
-    if not is_active_rivalry(game) or game.accepted_at is None:
+    first_day = start_date(game)
+    if not is_active_rivalry(game) or first_day is None:
         return {}
-    accepted_at = _naive_utc(game.accepted_at)
     rows = (
         db.query(DailyGameResult)
         .filter(
             DailyGameResult.account_id == account_id,
             DailyGameResult.game_key == game.daily_game_key,
-            DailyGameResult.puzzle_date >= accepted_at.date(),
-            DailyGameResult.created_at >= accepted_at,
+            DailyGameResult.puzzle_date >= first_day,
         )
         .all()
     )

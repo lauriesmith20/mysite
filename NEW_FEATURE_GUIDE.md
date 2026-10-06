@@ -80,7 +80,8 @@ no new tables or migration:
 **Rivalries come for free.** A registered game appears in the "Challenge to a daily game" picker on a
 friend's rivalry page. Once they accept, each puzzle day is won by whoever ranks higher (per the game's
 `rank`), scores count days won, and a friend's result is only shown after you've finished that day.
-Nothing counts from before the challenge was accepted. To show rivals on the game's result screen, call
+It counts from the day the challenge was accepted (that whole day, even if one of you had already
+played it); earlier days never count. To show rivals on the game's result screen, call
 `listRivalsForDay(key, day)` after `submitResult` resolves (see `CountryHopperPage`).
 
 The first result recorded per account, game and day is final (re-posting returns the stored one), and

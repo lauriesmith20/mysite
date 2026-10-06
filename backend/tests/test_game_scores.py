@@ -1,5 +1,8 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 
+from backend.database import engine
 from backend.main import app
 
 client = TestClient(app)
@@ -49,3 +52,28 @@ def test_get_missing_game_returns_404() -> None:
     response = client.get("/api/game-scores/999999")
     assert response.status_code == 404
 
+
+
+@pytest.fixture
+def enforce_foreign_keys():
+    """Turn on SQLite foreign key enforcement, as Turso has it, which plain SQLite leaves off."""
+
+    def _on(dbapi_connection, _record) -> None:
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+    event.listen(engine, "connect", _on)
+    engine.dispose()  # so new connections pick the pragma up
+    yield
+    event.remove(engine, "connect", _on)
+    engine.dispose()
+
+
+def test_delete_game_that_has_score_history(enforce_foreign_keys) -> None:
+    _ensure_friends()
+    game = client.post("/api/game-scores/", json={"opponent_id": 2, "name": "Darts"}).json()
+    assert client.post(f"/api/game-scores/{game['id']}/score", json={"player_id": 1}).status_code == 200
+    assert client.get(f"/api/game-scores/{game['id']}/history").json() != []
+
+    # Used to fail with a foreign key error (a 500) because the score history still pointed at the game.
+    assert client.delete(f"/api/game-scores/{game['id']}").status_code == 204
+    assert client.get(f"/api/game-scores/{game['id']}").status_code == 404

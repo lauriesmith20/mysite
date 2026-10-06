@@ -38,7 +38,7 @@ export default function ChallengeModal({ friendName, taken, onClose, onChallenge
         <h2 className="text-xl font-extrabold">Challenge {friendName}</h2>
         <p className="mt-1 text-sm text-(--soft)">
           Pick a daily game. Once {friendName} accepts, you each play the same puzzle every day and the better result
-          wins that day. Only games played after they accept count.
+          wins that day. It counts from the day they accept, including today.
         </p>
         <ul className="mt-4 flex flex-col gap-2">
           {Object.values(DAILY_GAMES).map((game) => {

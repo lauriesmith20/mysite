@@ -1,4 +1,5 @@
 import { apiFetch } from './api'
+import { localDateKey } from './dailyGames'
 import type { AccountSummary } from './friends'
 
 export interface Game {
@@ -150,7 +151,12 @@ export async function listIncomingChallenges(): Promise<IncomingChallenge[]> {
 }
 
 export async function acceptChallenge(id: number): Promise<Game> {
-  const response = await apiFetch(`/api/game-scores/${id}/accept`, { method: 'POST' })
+  // Our local date, so the rivalry counts from today even if today's puzzle was played before accepting.
+  const response = await apiFetch(`/api/game-scores/${id}/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ local_date: localDateKey() }),
+  })
   if (!response.ok) return failure(response, 'Failed to accept challenge')
   return response.json()
 }

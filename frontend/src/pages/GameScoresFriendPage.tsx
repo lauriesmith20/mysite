@@ -151,8 +151,8 @@ export default function GameScoresFriendPage() {
                 : `Waiting for ${friendName} to accept your ${game.name} challenge.`}
             </p>
             <p className="text-[13px] text-(--soft)">
-              You'd each play the same puzzle every day, and the better result wins the day. Only games played after
-              it's accepted count.
+              You'd each play the same puzzle every day, and the better result wins the day. It counts from the day it's
+              accepted, including today.
             </p>
             <div className="flex gap-2">
               {challengedMe ? (

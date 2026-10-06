@@ -81,8 +81,9 @@ def challenge(challenger: int, opponent: int) -> dict:
     return response.json()
 
 
-def accept(account_id: int, game_id: int) -> dict:
-    response = call(account_id, "post", f"/api/game-scores/{game_id}/accept")
+def accept(account_id: int, game_id: int, local_date: str | None = None) -> dict:
+    body = {"local_date": local_date} if local_date else None
+    response = call(account_id, "post", f"/api/game-scores/{game_id}/accept", json=body)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -189,19 +190,36 @@ def test_decline_removes_the_challenge_and_only_the_challenged_can_respond() -> 
     assert call(1, "delete", f"/api/game-scores/{again['id']}").status_code == 204
 
 
-def test_results_from_before_acceptance_do_not_count() -> None:
+def test_the_start_day_counts_even_if_played_before_accepting() -> None:
     befriend(4, 5)
     today = _today()
-    # Both play today *before* the rivalry exists.
+    yesterday = today - datetime.timedelta(days=1)
+    # Yesterday is before the rivalry. Today was played before the challenge was even accepted.
+    play(4, yesterday, score=1, lives=1, borders=9)
+    play(5, yesterday, score=5, lives=3, borders=5)
     play(4, today, score=5, lives=3, borders=5)
     play(5, today, score=2, lives=1, borders=9)
 
     game = challenge(4, 5)
     accepted = accept(5, game["id"])
     assert accepted["challenge_status"] == "accepted"
-    assert (accepted["creator_score"], accepted["opponent_score"]) == (0, 0)
-    assert days_for(4, game["id"]) == []
+    # Only today counts: no backfill before the start day, but nothing lost from the day itself.
+    days = days_for(4, game["id"])
+    assert [d["puzzle_date"] for d in days] == [today.isoformat()]
+    assert (days[0]["winner"], days[0]["decided_by"]) == ("me", "suitcases")
+    assert (accepted["creator_score"], accepted["opponent_score"]) == (1, 0)
     assert call(4, "delete", f"/api/game-scores/{game['id']}").status_code == 204
+
+
+def test_accept_takes_the_players_local_date_and_validates_it() -> None:
+    befriend(1, 3)
+    game = challenge(1, 3)
+    far_future = (_today() + datetime.timedelta(days=5)).isoformat()
+    assert call(3, "post", f"/api/game-scores/{game['id']}/accept", json={"local_date": far_future}).status_code == 422
+    # Still pending after the rejected attempt; a date a day ahead of UTC (a timezone east) is fine.
+    tomorrow = (_today() + datetime.timedelta(days=1)).isoformat()
+    assert accept(3, game["id"], local_date=tomorrow)["challenge_status"] == "accepted"
+    assert call(1, "delete", f"/api/game-scores/{game['id']}").status_code == 204
 
 
 # ── Scoring, spoilers and tiebreaks end to end ───────────────────────────────────────────────────

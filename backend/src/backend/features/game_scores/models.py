@@ -29,8 +29,10 @@ class Game(Base):
     # For those games only: "pending" until the opponent accepts the challenge, then "accepted".
     # (A declined challenge is simply deleted.) None for ordinary manually-scored games.
     challenge_status: Mapped[str | None] = mapped_column(nullable=True)
-    # Only results recorded after this moment count towards a daily-game rivalry.
     accepted_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
+    # The puzzle day the rivalry starts counting from (the accepter's local date, so it includes
+    # today even if they'd already played). Falls back to accepted_at's date when null.
+    started_on: Mapped[datetime.date | None] = mapped_column(nullable=True)
     # Legacy NOT NULL columns from before creator/opponent accounts existed, kept in place (rather
     # than dropped via a Turso-unsafe batch table rebuild) — still need a value on every insert.
     laurie_score: Mapped[int] = mapped_column(default=0)

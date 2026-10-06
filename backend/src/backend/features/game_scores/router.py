@@ -14,6 +14,7 @@ from backend.features.friends.models import Friendship, FriendshipStatus
 from backend.features.game_scores import daily_rivalry
 from backend.features.game_scores.models import Game, GameScoreHistory
 from backend.features.game_scores.schemas import (
+    ChallengeAccept,
     ChallengeCreate,
     ChallengeRead,
     DayRead,
@@ -113,8 +114,8 @@ def create_challenge(
     account: AllowedAccount = Depends(require_approved_account),
     db: Session = Depends(get_db),
 ) -> GameRead:
-    """Challenge a friend to a rivalry over one of the built-in daily games. They must accept it, and
-    only results recorded after they do count."""
+    """Challenge a friend to a rivalry over one of the built-in daily games. They must accept it, and it
+    then counts from the day they accept (including that day)."""
     if payload.opponent_id == account.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot challenge yourself")
     _require_friend(db, account, payload.opponent_id)
@@ -191,12 +192,19 @@ def _pending_challenge_for(db: Session, game_id: int, account: AllowedAccount) -
 @router.post("/{game_id}/accept", response_model=GameRead)
 def accept_challenge(
     game_id: int,
+    payload: ChallengeAccept | None = None,
     account: AllowedAccount = Depends(require_approved_account),
     db: Session = Depends(get_db),
 ) -> GameRead:
     game = _pending_challenge_for(db, game_id, account)
+    now = datetime.datetime.now(datetime.UTC)
+    local_date = payload.local_date if payload else None
+    # Players' local dates can be a day either side of UTC; anything further out is wrong.
+    if local_date is not None and abs((local_date - now.date()).days) > 1:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "local_date is too far from today")
     game.challenge_status = daily_rivalry.ACCEPTED
-    game.accepted_at = datetime.datetime.now(datetime.UTC)
+    game.accepted_at = now
+    game.started_on = local_date or now.date()
     db.commit()
     db.refresh(game)
     return _game_read(game, db)
@@ -344,6 +352,8 @@ def delete_game(
     db: Session = Depends(get_db),
 ) -> None:
     game = _get_game_for_participant(db, game_id, account.id)
+    # Score history rows reference the game, and Turso enforces foreign keys, so remove them first.
+    db.query(GameScoreHistory).filter(GameScoreHistory.game_id == game.id).delete()
     db.delete(game)
     db.commit()
 

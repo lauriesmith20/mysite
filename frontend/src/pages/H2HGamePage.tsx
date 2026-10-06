@@ -171,7 +171,7 @@ export default function H2HGamePage() {
           </p>
           <p className="text-[13px] text-(--soft)">
             You'd each play the same puzzle every day, and the better result wins the day: most suitcases, then most
-            lives, then fewest hops. Only games played after it's accepted count.
+            lives, then fewest hops. It counts from the day it's accepted, including today.
           </p>
           <div className="flex gap-2">
             {game.opponent.id === me.id ? (
