@@ -1,6 +1,6 @@
-import { Compass, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import CountryFlag from '../components/CountryFlag'
 import CountryPicker from '../components/CountryPicker'
 import ScoreBurst from '../components/ScoreBurst'
@@ -355,12 +355,6 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
               label="Both"
             />
           </div>
-          <Link
-            to="/country-hopper/explore"
-            className="mt-1 flex h-[54px] items-center justify-center rounded-full bg-(--chip) text-[17px] font-extrabold text-(--ink) transition active:scale-[0.97]"
-          >
-            Explore other routes
-          </Link>
         </>
       )}
     </div>
@@ -390,15 +384,6 @@ export default function CountryHopperPage() {
       title="Country Hopper"
       subtitle={`Daily puzzle #${puzzleNumber(day)}: hop from border to border to reach the destination.`}
       subtitleClassName="text-sm"
-      actions={
-        <Link
-          to="/country-hopper/explore"
-          aria-label="Route explorer"
-          className="p-2 text-gray-400 transition hover:text-gray-900 dark:hover:text-gray-100"
-        >
-          <Compass className="h-6 w-6" aria-hidden="true" />
-        </Link>
-      }
     >
       {error ? (
         <p className="text-center text-(--soft)">Couldn't load the map. Refresh to try again.</p>
