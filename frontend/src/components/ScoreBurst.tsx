@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { X } from 'lucide-react'
 
 const CONFETTI_COLOURS = ['#f09a52', '#ef476f', '#ffd166', '#06d6a0', '#4361ee', '#b388eb']
-const DURATION_MS = 1000
+const DURATION_MS = 1800
 const BIG_DURATION_MS = 4200
 
 interface Particle {
@@ -38,26 +38,26 @@ function makeBigParticles(kind: 'confetti' | 'miss'): Particle[] {
 function makeParticles(kind: 'confetti' | 'miss', big: boolean): Particle[] {
   if (big) return makeBigParticles(kind)
   if (kind === 'confetti') {
-    return Array.from({ length: 22 }, () => ({
-      dx: between(-120, 120),
-      dy: between(-140, 30),
+    return Array.from({ length: 56 }, () => ({
+      dx: between(-130, 130),
+      dy: between(-150, 20),
       rot: between(-720, 720),
       size: between(6, 11),
       colour: CONFETTI_COLOURS[Math.floor(Math.random() * CONFETTI_COLOURS.length)],
-      duration: between(700, DURATION_MS),
-      sway: 0,
-      fall: 0,
+      duration: between(1100, DURATION_MS),
+      sway: between(-30, 30),
+      fall: between(60, 150),
     }))
   }
-  return Array.from({ length: 7 }, () => ({
-    dx: between(-70, 70),
-    dy: between(-100, -30),
+  return Array.from({ length: 16 }, () => ({
+    dx: between(-80, 80),
+    dy: between(-110, -20),
     rot: between(-25, 25),
     size: between(18, 30),
     colour: '#ef4444',
-    duration: between(700, 900),
-    sway: 0,
-    fall: 0,
+    duration: between(1100, 1600),
+    sway: between(-20, 20),
+    fall: between(50, 120),
   }))
 }
 
@@ -90,13 +90,13 @@ export default function ScoreBurst({ kind, big = false }: { kind: 'confetti' | '
         return kind === 'confetti' ? (
           <span
             key={i}
-            className={`score-burst-particle ${big ? 'score-burst-big' : ''} absolute rounded-[2px]`}
+            className="score-burst-particle score-burst-big absolute rounded-[2px]"
             style={{ ...style, width: p.size * 0.7, height: p.size, background: p.colour }}
           />
         ) : (
           <X
             key={i}
-            className={`score-burst-particle ${big ? 'score-burst-big' : ''} absolute`}
+            className="score-burst-particle score-burst-big absolute"
             style={{ ...style, width: p.size, height: p.size, color: p.colour }}
             strokeWidth={3.5}
           />

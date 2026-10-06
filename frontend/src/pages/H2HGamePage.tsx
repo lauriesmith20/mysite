@@ -38,6 +38,8 @@ export default function H2HGamePage() {
   const [history, setHistory] = useState<ScoreHistoryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  // Briefly locks the +1 buttons after a tap so a double tap can't score twice.
+  const [cooling, setCooling] = useState(false)
   // `key` changes per score so the effect restarts even when the same player scores twice running.
   const [burst, setBurst] = useState<{ key: number; playerId: number } | null>(null)
   // Day-by-day results, for rivalries over a built-in daily game.
@@ -63,7 +65,9 @@ export default function H2HGamePage() {
   }, [id])
 
   async function handleScore(playerId: number) {
-    if (!id) return
+    if (!id || cooling) return
+    setCooling(true)
+    setTimeout(() => setCooling(false), 1000)
     setError(null)
     try {
       const updated = await updateScore(Number(id), playerId)
@@ -248,7 +252,7 @@ export default function H2HGamePage() {
                 ) : (
                   <button
                     onClick={() => handleScore(player.id)}
-                    disabled={locked}
+                    disabled={locked || cooling}
                     className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
                   >
                     +1
