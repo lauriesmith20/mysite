@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import GuestHeader from '../shared/layout/GuestHeader'
 import Tile from '../components/Tile'
+import { autoSignIn } from '../lib/returningUser'
 import { listPublicTiles, type Tile as TileData } from '../lib/tiles'
 
 // Home for signed-out visitors: only guest-friendly (public) tiles, plus a way to sign in.
 export default function GuestHomePage() {
   const [tiles, setTiles] = useState<TileData[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Someone who has signed in here before is sent straight back to Microsoft (once per tab session).
+  useEffect(() => {
+    autoSignIn()
+  }, [])
 
   useEffect(() => {
     listPublicTiles()

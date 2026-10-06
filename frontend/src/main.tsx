@@ -6,8 +6,10 @@ import { HashRouter } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 import { msalInstance } from './lib/msal'
+import { rememberReturningUser } from './lib/returningUser'
 
-// Keep the active account in sync so acquireTokenSilent has an account to use.
+// Keep the active account in sync so acquireTokenSilent has an account to use, and remember who
+// it is so a later visit can sign them back in automatically.
 msalInstance.addEventCallback((event) => {
   const account =
     event.payload && typeof event.payload === 'object' && 'account' in event.payload
@@ -19,6 +21,7 @@ msalInstance.addEventCallback((event) => {
     account
   ) {
     msalInstance.setActiveAccount(account)
+    rememberReturningUser(account.username)
   }
 })
 

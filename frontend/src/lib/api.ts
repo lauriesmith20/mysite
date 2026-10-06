@@ -12,7 +12,8 @@ async function getAccessToken(): Promise<string | null> {
   } catch (error) {
     // Log so silent-acquisition failures (e.g. app registration misconfig, blocked third-party
     // cookies) are visible in devtools instead of silently surfacing as a generic 401.
-    console.error('acquireTokenSilent failed, falling back to interactive redirect:', error)
+    const code = (error as { errorCode?: string }).errorCode
+    console.error(`acquireTokenSilent failed (${code ?? 'unknown'}), falling back to interactive redirect:`, error)
     await msalInstance.acquireTokenRedirect({ scopes: apiScopes, account })
     return null
   }

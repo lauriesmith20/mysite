@@ -2,7 +2,7 @@ import { useIsAuthenticated, useMsal } from '@azure/msal-react'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { getMe, type Me } from '../../lib/accounts'
 import { LOCAL_USER } from '../../lib/localAuth'
-import { apiScopes } from '../../lib/msal'
+import { autoSignIn, forgetReturningUser, signIn } from '../../lib/returningUser'
 
 interface AuthContextValue {
   me: Me
@@ -38,12 +38,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       .catch(() => {})
   }
 
-  function signIn() {
-    instance.loginRedirect({ scopes: apiScopes })
-  }
+  // Someone who has signed in here before and has since been signed out goes straight back to Microsoft.
+  useEffect(() => {
+    if (!isAuthenticated) autoSignIn()
+  }, [isAuthenticated])
 
   function signOut() {
     if (LOCAL_USER) return // nothing to sign out of in local dev mode
+    forgetReturningUser()
     instance.logoutRedirect()
   }
 

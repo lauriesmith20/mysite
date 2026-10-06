@@ -1,11 +1,9 @@
-import { useMsal } from '@azure/msal-react'
 import { Moon, Sun } from 'lucide-react'
-import { apiScopes } from '../../lib/msal'
+import { signIn } from '../../lib/returningUser'
 import { useTheme } from '../../lib/theme'
 
 // Top bar for signed-out visitors (the signed-in equivalent is Sidebar).
 export default function GuestHeader() {
-  const { instance } = useMsal()
   const { dark, toggle } = useTheme()
   return (
     <header className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 px-5 py-4 md:px-12">
@@ -15,7 +13,7 @@ export default function GuestHeader() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => instance.loginRedirect({ scopes: apiScopes })}
+          onClick={signIn}
           className="h-11 rounded-full bg-(--ink) px-5 text-sm font-extrabold text-(--bg) transition active:scale-[0.97]"
         >
           Sign in
