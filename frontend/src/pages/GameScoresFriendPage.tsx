@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Page from '../shared/layout/Page'
+import ChallengeModal from '../components/ChallengeModal'
 import NewGameModal from '../components/NewGameModal'
 import { useAuth } from '../shared/auth/AuthGate'
 import { listFriends, type Friend } from '../lib/friends'
-import { createGame, listGamesWithFriend, type Game } from '../lib/gameScores'
+import {
+  acceptChallenge,
+  createChallenge,
+  createGame,
+  declineChallenge,
+  deleteGame,
+  listGamesWithFriend,
+  type Game,
+} from '../lib/gameScores'
 
 const ME_COLOR = '#EC4060'
 const FRIEND_COLOR = '#4A5BE0'
@@ -40,6 +49,8 @@ export default function GameScoresFriendPage() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showChallenge, setShowChallenge] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     listFriends().then((friends) => setFriend(friends.find((f) => f.id === id) ?? null))
@@ -53,8 +64,28 @@ export default function GameScoresFriendPage() {
     setGames((prev) => [...prev, game])
   }
 
+  async function handleChallenge(dailyGameKey: string) {
+    const game = await createChallenge(id, dailyGameKey)
+    setGames((prev) => [...prev, game])
+  }
+
+  // Responding to a challenge: accepting turns it into a live rivalry; declining/cancelling removes it.
+  async function respond(action: () => Promise<Game | void>, game: Game) {
+    setError(null)
+    try {
+      const updated = await action()
+      setGames((prev) =>
+        updated ? prev.map((g) => (g.id === game.id ? updated : g)) : prev.filter((g) => g.id !== game.id),
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    }
+  }
+
   const friendName = friend ? nameFor(friend) : '…'
+  const pending = games.filter((game) => game.challenge_status === 'pending')
   const rows = games
+    .filter((game) => game.challenge_status !== 'pending')
     .map((game) => {
       const iAmCreator = game.creator.id === me.id
       return {
@@ -66,8 +97,7 @@ export default function GameScoresFriendPage() {
     .sort((a, b) => (b.game.last_updated ?? '').localeCompare(a.game.last_updated ?? ''))
   const totalMine = rows.reduce((n, r) => n + r.mine, 0)
   const totalTheirs = rows.reduce((n, r) => n + r.theirs, 0)
-  const leader =
-    totalMine === totalTheirs ? 'All square' : totalMine > totalTheirs ? 'You lead' : `${friendName} leads`
+  const leader = totalMine === totalTheirs ? 'All square' : totalMine > totalTheirs ? 'You lead' : `${friendName} leads`
 
   return (
     <Page title="Rivalry" back={{ to: '/game-scores', label: 'Back to friends' }}>
@@ -102,9 +132,59 @@ export default function GameScoresFriendPage() {
           <div style={{ flexGrow: totalTheirs, backgroundColor: FRIEND_COLOR }} />
         </div>
         <p className="text-[13px] text-(--soft)">
-          {games.length} game{games.length === 1 ? '' : 's'} · {leader}
+          {rows.length} game{rows.length === 1 ? '' : 's'} · {leader}
         </p>
       </section>
+
+      {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+      {pending.map((game) => {
+        const challengedMe = game.opponent.id === me.id
+        return (
+          <section
+            key={game.id}
+            className="mt-4 flex flex-col gap-3 rounded-[22px] bg-(--chip) p-4"
+            aria-label={`${game.name} challenge`}
+          >
+            <p className="text-[15px] font-bold">
+              {challengedMe
+                ? `${friendName} challenged you to ${game.name}.`
+                : `Waiting for ${friendName} to accept your ${game.name} challenge.`}
+            </p>
+            <p className="text-[13px] text-(--soft)">
+              You'd each play the same puzzle every day, and the better result wins the day. Only games played after
+              it's accepted count.
+            </p>
+            <div className="flex gap-2">
+              {challengedMe ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => respond(() => acceptChallenge(game.id), game)}
+                    className="h-11 flex-1 rounded-full bg-(--ink) text-[15px] font-extrabold text-(--bg) transition active:scale-[0.97]"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => respond(() => declineChallenge(game.id), game)}
+                    className="h-11 flex-1 rounded-full bg-(--card) text-[15px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+                  >
+                    Decline
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => respond(() => deleteGame(game.id), game)}
+                  className="h-11 flex-1 rounded-full bg-(--card) text-[15px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+                >
+                  Cancel challenge
+                </button>
+              )}
+            </div>
+          </section>
+        )
+      })}
 
       <div className="mt-5 flex items-center justify-between">
         <h2 className="rounded-full bg-(--ink) px-4 py-2 text-sm font-extrabold text-(--bg)">By game</h2>
@@ -127,7 +207,7 @@ export default function GameScoresFriendPage() {
                     {game.name}
                     {game.is_daily && (
                       <span className="ml-2 rounded-full bg-(--chip) px-2 py-0.5 align-middle text-[11px] font-bold text-(--soft)">
-                        Daily
+                        {game.daily_game_key ? 'Daily challenge' : 'Daily'}
                       </span>
                     )}
                   </span>
@@ -151,13 +231,28 @@ export default function GameScoresFriendPage() {
 
       <button
         type="button"
-        onClick={() => setShowModal(true)}
+        onClick={() => setShowChallenge(true)}
         className="mt-6 flex h-14 w-full items-center justify-center rounded-full bg-(--ink) text-[17px] font-extrabold text-(--bg) transition active:scale-[0.97]"
+      >
+        Challenge to a daily game
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowModal(true)}
+        className="mt-3 flex h-14 w-full items-center justify-center rounded-full bg-(--chip) text-[17px] font-extrabold text-(--ink) transition active:scale-[0.97]"
       >
         New game
       </button>
 
       {showModal && <NewGameModal onClose={() => setShowModal(false)} onCreate={handleAddGame} />}
+      {showChallenge && (
+        <ChallengeModal
+          friendName={friendName}
+          taken={new Set(games.flatMap((game) => (game.daily_game_key ? [game.daily_game_key] : [])))}
+          onClose={() => setShowChallenge(false)}
+          onChallenge={handleChallenge}
+        />
+      )}
     </Page>
   )
 }

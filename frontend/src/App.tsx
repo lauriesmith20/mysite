@@ -14,6 +14,7 @@ import H2HGamePage from './pages/H2HGamePage'
 import HomePage from './pages/HomePage'
 import GuestHomePage from './pages/GuestHomePage'
 import CookingModePage from './pages/CookingModePage'
+import DailyGameHistoryPage from './pages/DailyGameHistoryPage'
 import PlantQuizGamePage from './pages/PlantQuizGamePage'
 import PlantQuizLeaderboardsPage from './pages/PlantQuizLeaderboardsPage'
 import PlantQuizMenuPage from './pages/PlantQuizMenuPage'
@@ -35,6 +36,7 @@ function SignedInRoutes() {
         <Route path="/game-scores" element={<GameScoresPage />} />
         <Route path="/game-scores/:friendId" element={<GameScoresFriendPage />} />
         <Route path="/h2h-game/:id" element={<H2HGamePage />} />
+        <Route path="/games/:gameKey/history" element={<DailyGameHistoryPage />} />
         <Route path="/plant-quiz" element={<PlantQuizMenuPage />} />
         <Route path="/plant-quiz/leaderboards" element={<PlantQuizLeaderboardsPage />} />
         <Route path="/plant-quiz/:mode" element={<PlantQuizGamePage />} />

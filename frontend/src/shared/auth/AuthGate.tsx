@@ -18,6 +18,11 @@ export function useAuth(): AuthContextValue {
   return context
 }
 
+/** Like useAuth, but null instead of throwing: for public pages that also work for guests. */
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext)
+}
+
 export default function AuthGate({ children }: { children: ReactNode }) {
   const isAuthenticated = useIsAuthenticated() || Boolean(LOCAL_USER)
   const { instance } = useMsal()

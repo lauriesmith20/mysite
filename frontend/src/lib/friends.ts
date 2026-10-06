@@ -10,6 +10,11 @@ export interface AccountSummary {
   avatar_color: string
 }
 
+/** What to call someone: their nickname if they set one, else their name, else their email. */
+export function accountName(account: AccountSummary): string {
+  return account.nickname?.trim() || account.display_name || account.email
+}
+
 export interface Friend extends AccountSummary {
   friendship_id: number
 }

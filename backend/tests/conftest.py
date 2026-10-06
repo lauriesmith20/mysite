@@ -9,6 +9,7 @@ from backend.features.accounts import (
     models as _accounts_models,  # noqa: F401
 )
 from backend.features.beer_bets import models as _beer_bets_models  # noqa: F401
+from backend.features.daily_games import models as _daily_games_models  # noqa: F401
 from backend.features.friends import models as _friends_models  # noqa: F401
 from backend.features.game_scores import (
     models as _game_scores_models,  # noqa: F401

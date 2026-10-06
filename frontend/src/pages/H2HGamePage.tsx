@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Page from '../shared/layout/Page'
-import { Settings } from 'lucide-react'
+import { Settings, Trash2 } from 'lucide-react'
 import {
+  acceptChallenge,
+  declineChallenge,
   deleteGame,
   getGame,
   getScoreHistory,
   hasUpdatedToday,
+  listRivalDays,
   updateGame,
   updateScore,
   type Game,
+  type RivalDay,
   type ScoreHistoryEntry,
 } from '../lib/gameScores'
+import { DAILY_GAMES } from '../lib/dailyGameRegistry'
 import EditGameModal from '../components/EditGameModal'
+import RivalDayList from '../components/RivalDayList'
 import ScoreBurst from '../components/ScoreBurst'
 import { useAuth } from '../shared/auth/AuthGate'
 
@@ -30,10 +36,20 @@ export default function H2HGamePage() {
   const [editing, setEditing] = useState(false)
   // `key` changes per score so the effect restarts even when the same player scores twice running.
   const [burst, setBurst] = useState<{ key: number; playerId: number } | null>(null)
+  // Day-by-day results, for rivalries over a built-in daily game.
+  const [days, setDays] = useState<RivalDay[] | null>(null)
 
   useEffect(() => {
     if (id) getGame(Number(id)).then(setGame)
   }, [id])
+
+  const isLiveRivalry = game?.daily_game_key != null && game.challenge_status === 'accepted'
+  useEffect(() => {
+    if (id && isLiveRivalry)
+      listRivalDays(Number(id))
+        .then(setDays)
+        .catch(() => setDays([]))
+  }, [id, isLiveRivalry])
 
   useEffect(() => {
     if (id) getScoreHistory(Number(id)).then(setHistory)
@@ -64,6 +80,33 @@ export default function H2HGamePage() {
     navigate(`/game-scores/${friendId}`)
   }
 
+  async function handleAccept() {
+    if (!id) return
+    setError(null)
+    try {
+      setGame(await acceptChallenge(Number(id)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to accept the challenge.')
+    }
+  }
+
+  async function handleDecline() {
+    if (!id) return
+    setError(null)
+    try {
+      await declineChallenge(Number(id))
+      navigate(`/game-scores/${friendId}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to decline the challenge.')
+    }
+  }
+
+  async function handleEndRivalry() {
+    if (window.confirm('End this rivalry? Your daily results are kept, but the head-to-head tally is removed.')) {
+      await handleDelete()
+    }
+  }
+
   if (!game) {
     return (
       <Page back={{ to: '/game-scores', label: 'Back to games' }}>
@@ -72,7 +115,11 @@ export default function H2HGamePage() {
     )
   }
 
-  const locked = game.is_daily && hasUpdatedToday(game)
+  // Rivalries over a built-in daily game: scores count days won and come from the daily results.
+  const daily = game.daily_game_key !== null ? DAILY_GAMES[game.daily_game_key] : undefined
+  const isChallenge = game.daily_game_key !== null
+  const pendingChallenge = isChallenge && game.challenge_status === 'pending'
+  const locked = !isChallenge && game.is_daily && hasUpdatedToday(game)
   const friendId = game.creator.id === me.id ? game.opponent.id : game.creator.id
   // You are always on the left, whichever side of the game you were stored as.
   const sides = [
@@ -86,50 +133,117 @@ export default function H2HGamePage() {
       title={game.name}
       back={{ to: `/game-scores/${friendId}`, label: 'Back to games' }}
       actions={
-        <button
-          onClick={() => setEditing(true)}
-          aria-label="Edit game"
-          className="p-2 text-gray-400 transition hover:text-gray-900 dark:hover:text-gray-100"
-        >
-          <Settings className="h-5 w-5" aria-hidden="true" />
-        </button>
+        isChallenge ? (
+          <button
+            onClick={handleEndRivalry}
+            aria-label="End rivalry"
+            className="p-2 text-gray-400 transition hover:text-red-600 dark:hover:text-red-400"
+          >
+            <Trash2 className="h-5 w-5" aria-hidden="true" />
+          </button>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            aria-label="Edit game"
+            className="p-2 text-gray-400 transition hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            <Settings className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )
       }
       contentClassName="text-center"
     >
       {game.image_url && (
-        <img
-          src={game.image_url}
-          alt={game.name}
-          className="mx-auto mb-6 h-40 w-40 rounded-xl object-cover"
-        />
+        <img src={game.image_url} alt={game.name} className="mx-auto mb-6 h-40 w-40 rounded-xl object-cover" />
       )}
-      {game.is_daily && (
+      {game.is_daily && !isChallenge && (
         <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
           {locked ? 'Already played today. Come back tomorrow!' : 'Daily game — one update per day'}
         </p>
       )}
       {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
-      <div className="grid grid-cols-2 gap-6">
-        {sides.map(({ player, score }) => {
-          const isMe = player.id === me.id
-          return (
-            <div key={player.id} className="relative flex flex-col items-center gap-4">
-              <h2 className="text-lg font-semibold">{isMe ? 'You' : nameFor(player)}</h2>
-              <p className="text-5xl font-bold">{score}</p>
+      {pendingChallenge && (
+        <section className="flex flex-col gap-3 rounded-[22px] bg-(--chip) p-5 text-left">
+          <p className="text-[16px] font-bold">
+            {game.opponent.id === me.id
+              ? `${nameFor(game.creator)} challenged you to ${game.name}.`
+              : `Waiting for ${nameFor(game.opponent)} to accept your ${game.name} challenge.`}
+          </p>
+          <p className="text-[13px] text-(--soft)">
+            You'd each play the same puzzle every day, and the better result wins the day: most suitcases, then most
+            lives, then fewest hops. Only games played after it's accepted count.
+          </p>
+          <div className="flex gap-2">
+            {game.opponent.id === me.id ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleAccept}
+                  className="h-11 flex-1 rounded-full bg-(--ink) text-[15px] font-extrabold text-(--bg) transition active:scale-[0.97]"
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDecline}
+                  className="h-11 flex-1 rounded-full bg-(--card) text-[15px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+                >
+                  Decline
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => handleScore(player.id)}
-                disabled={locked}
-                className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
+                type="button"
+                onClick={handleDelete}
+                className="h-11 flex-1 rounded-full bg-(--card) text-[15px] font-extrabold text-(--ink) transition active:scale-[0.97]"
               >
-                +1
+                Cancel challenge
               </button>
-              {burst?.playerId === player.id && (
-                <ScoreBurst key={burst.key} kind={isMe ? 'confetti' : 'miss'} />
-              )}
-            </div>
-          )
-        })}
-      </div>
+            )}
+          </div>
+        </section>
+      )}
+      {!pendingChallenge && (
+        <div className="grid grid-cols-2 gap-6">
+          {sides.map(({ player, score }) => {
+            const isMe = player.id === me.id
+            return (
+              <div key={player.id} className="relative flex flex-col items-center gap-4">
+                <h2 className="text-lg font-semibold">{isMe ? 'You' : nameFor(player)}</h2>
+                <p className="text-5xl font-bold">{score}</p>
+                {isChallenge ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">days won</p>
+                ) : (
+                  <button
+                    onClick={() => handleScore(player.id)}
+                    disabled={locked}
+                    className="rounded-lg border border-gray-200 px-6 py-2 text-lg font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-900"
+                  >
+                    +1
+                  </button>
+                )}
+                {burst?.playerId === player.id && <ScoreBurst key={burst.key} kind={isMe ? 'confetti' : 'miss'} />}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {isLiveRivalry && (
+        <div className="mt-8">
+          <h2 className="mb-3 text-left text-lg font-semibold">Day by day</h2>
+          {daily && days ? (
+            <RivalDayList
+              days={days}
+              game={daily}
+              friendName={nameFor(game.creator.id === me.id ? game.opponent : game.creator)}
+            />
+          ) : (
+            <p className="text-center text-gray-500 dark:text-gray-400">
+              {days ? "This game isn't available." : 'Loading…'}
+            </p>
+          )}
+        </div>
+      )}
       {history.length > 0 && (
         <div className="mt-10 text-left">
           <h2 className="mb-3 text-lg font-semibold">History</h2>
@@ -159,15 +273,9 @@ export default function H2HGamePage() {
           </div>
         </div>
       )}
-      {editing && (
-        <EditGameModal
-          game={game}
-          onClose={() => setEditing(false)}
-          onSave={handleSave}
-          onDelete={handleDelete}
-        />
+      {editing && !isChallenge && (
+        <EditGameModal game={game} onClose={() => setEditing(false)} onSave={handleSave} onDelete={handleDelete} />
       )}
     </Page>
   )
 }
-

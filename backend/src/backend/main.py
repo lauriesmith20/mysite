@@ -10,6 +10,7 @@ from backend.auth import require_approved_account
 from backend.config import get_settings
 from backend.features.accounts.router import router as accounts_router
 from backend.features.beer_bets.router import router as beer_bets_router
+from backend.features.daily_games.router import router as daily_games_router
 from backend.features.friends.router import router as friends_router
 from backend.features.game_scores.router import router as game_scores_router
 from backend.features.plant_quiz.router import router as plant_quiz_router
@@ -75,6 +76,7 @@ app.include_router(plant_quiz_router, dependencies=[Depends(require_approved_acc
 app.include_router(recipes_router, dependencies=[Depends(require_approved_account)])
 app.include_router(friends_router, dependencies=[Depends(require_approved_account)])
 app.include_router(beer_bets_router, dependencies=[Depends(require_approved_account)])
+app.include_router(daily_games_router, dependencies=[Depends(require_approved_account)])
 
 # Mounted last: it's a root-level ("/") mount, so more specific routes above must be tried first.
 mcp.mount(app)

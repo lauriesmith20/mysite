@@ -58,6 +58,34 @@ Tiles live in the `tiles` table, not in frontend code — create one via `POST /
 - Reuse `frontend/src/components/` (`Layout`, modals, etc.) where it fits; don't force shared
   components onto a feature that doesn't need them.
 
+## Adding a once-a-day puzzle game (shared results + score history)
+
+Daily games (Country Hopper today) share one backend table, API and history page, so a new one needs
+no new tables or migration:
+
+1. **Backend:** add an entry to `GAMES` in
+   [backend/src/backend/features/daily_games/registry.py](backend/src/backend/features/daily_games/registry.py)
+   (`key`, `title`, `max_score`, and a `rank` function saying how two results compare, with
+   `rank_labels` naming each tiebreak step). The routes under `/api/daily-games/<key>/results` then
+   work for it, and so do rivalries (below).
+2. **Frontend registry:** add an entry to `DAILY_GAMES` in
+   [frontend/src/lib/dailyGameRegistry.ts](frontend/src/lib/dailyGameRegistry.ts) (title, play path,
+   max score, score icon, and `describe` for the one-line detail in history rows).
+3. **The game page:** when the game ends and the player is signed in (`useOptionalAuth() !== null`,
+   so it still works for guests), call `submitResult(key, { puzzle_date, score, outcome, details })`
+   from `lib/dailyGames.ts`. `puzzle_date` is the player's local `YYYY-MM-DD`. Put whatever you need to
+   restore the finished game in `details`, and on load use `getResult(key, day)` to restore it, so a day
+   can't be replayed from another device. Link to `/games/<key>/history` once the game is complete.
+
+**Rivalries come for free.** A registered game appears in the "Challenge to a daily game" picker on a
+friend's rivalry page. Once they accept, each puzzle day is won by whoever ranks higher (per the game's
+`rank`), scores count days won, and a friend's result is only shown after you've finished that day.
+Nothing counts from before the challenge was accepted. To show rivals on the game's result screen, call
+`listRivalsForDay(key, day)` after `submitResult` resolves (see `CountryHopperPage`).
+
+The first result recorded per account, game and day is final (re-posting returns the stored one), and
+`/games/<key>/history` (streaks, average, list) works for any registered game.
+
 ## 5. Verify
 
 ```bash

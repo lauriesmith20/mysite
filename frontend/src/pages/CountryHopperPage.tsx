@@ -1,8 +1,11 @@
 import { X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import CountryFlag from '../components/CountryFlag'
 import CountryPicker from '../components/CountryPicker'
+import DailyScore from '../components/DailyScore'
+import Lives from '../components/Lives'
+import RivalsToday from '../components/RivalsToday'
 import ScoreBurst from '../components/ScoreBurst'
 import WorldMap, { HATCH_FILL, type MapLine } from '../components/WorldMap'
 import { loadWorld, type World } from '../lib/countryGraph'
@@ -18,8 +21,14 @@ import {
   suitcasesFor,
   type Puzzle,
 } from '../lib/countryHopperGame'
+import { DAILY_GAMES } from '../lib/dailyGameRegistry'
+import { getResult, listRivalsForDay, submitResult, type RivalToday } from '../lib/dailyGames'
 import { buildHopperWorld, type HopperWorld } from '../lib/hopperWorld'
+import { useOptionalAuth } from '../shared/auth/AuthGate'
 import Page from '../shared/layout/Page'
+
+/** Key under which results are recorded for the signed-in account (see lib/dailyGameRegistry.ts). */
+const GAME_KEY = 'country-hopper'
 
 const START_COLOR = '#EC4060'
 const END_COLOR = '#4A5BE0'
@@ -39,25 +48,39 @@ interface GameState {
 
 const STORAGE_PREFIX = 'country-hopper:'
 
+/**
+ * Rebuilds a game from a saved route (country names) and lives, whether it came from this device
+ * or from the account. The route is replayed through the rules, so a stale or edited save can't
+ * leave an impossible state: it returns null instead.
+ */
+function rebuildGame(
+  savedPath: unknown,
+  savedLives: unknown,
+  names: string[],
+  hopper: HopperWorld,
+  puzzle: Puzzle,
+): GameState | null {
+  if (!Array.isArray(savedPath) || typeof savedLives !== 'number') return null
+  const ids = savedPath.map((name) => names.indexOf(String(name)))
+  if (ids[0] !== puzzle.start) return null
+  const path = [puzzle.start]
+  for (const id of ids.slice(1)) {
+    const outcome = judgeGuess(hopper.adjacency, path, puzzle.end, id)
+    if (id < 0 || (outcome !== 'hop' && outcome !== 'win')) return null
+    path.push(id)
+  }
+  const lives = Math.min(MAX_LIVES, Math.max(0, Math.floor(savedLives)))
+  const status: Status = path[path.length - 1] === puzzle.end ? 'won' : lives === 0 ? 'lost' : 'playing'
+  return { path, lives, status }
+}
+
 function loadGame(day: string, names: string[], hopper: HopperWorld, puzzle: Puzzle): GameState | null {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_PREFIX + day) ?? 'null') as {
-      path?: string[]
-      lives?: number
+      path?: unknown
+      lives?: unknown
     } | null
-    if (!saved || !Array.isArray(saved.path) || typeof saved.lives !== 'number') return null
-    const ids = saved.path.map((name) => names.indexOf(name))
-    if (ids[0] !== puzzle.start) return null
-    // Replay the saved route through the rules so a stale or edited entry can't leave a bad state.
-    const path = [puzzle.start]
-    for (const id of ids.slice(1)) {
-      const outcome = judgeGuess(hopper.adjacency, path, puzzle.end, id)
-      if (id < 0 || (outcome !== 'hop' && outcome !== 'win')) return null
-      path.push(id)
-    }
-    const lives = Math.min(MAX_LIVES, Math.max(0, Math.floor(saved.lives)))
-    const status: Status = path[path.length - 1] === puzzle.end ? 'won' : lives === 0 ? 'lost' : 'playing'
-    return { path, lives, status }
+    return saved ? rebuildGame(saved.path, saved.lives, names, hopper, puzzle) : null
   } catch {
     return null
   }
@@ -79,22 +102,6 @@ function saveGame(day: string, game: GameState, names: string[]) {
 }
 
 // ── Pieces ───────────────────────────────────────────────────────────────────────────────────────
-
-function Lives({ lives }: { lives: number }) {
-  return (
-    <div className="flex items-center gap-1" role="img" aria-label={`${lives} of ${MAX_LIVES} lives left`}>
-      {Array.from({ length: MAX_LIVES }, (_, i) => (
-        <X
-          key={i}
-          size={28}
-          strokeWidth={4}
-          aria-hidden="true"
-          className={`transition-colors duration-300 ${i < lives ? 'text-red-500' : 'text-(--chip)'}`}
-        />
-      ))}
-    </div>
-  )
-}
 
 /** The big red X that flashes when a guess costs a life. Mount with a fresh `key` each time. */
 function MissFlash() {
@@ -126,18 +133,6 @@ function EndpointCard(props: { caption: string; name: string; code: string; colo
   )
 }
 
-function Suitcases({ count }: { count: number }) {
-  return (
-    <div className="flex gap-1 text-4xl" role="img" aria-label={`${count} of ${MAX_SUITCASES} suitcases`}>
-      {Array.from({ length: MAX_SUITCASES }, (_, i) => (
-        <span key={i} className={i < count ? '' : 'opacity-25 grayscale'} aria-hidden="true">
-          🧳
-        </span>
-      ))}
-    </div>
-  )
-}
-
 function LegendChip({ swatch, label }: { swatch: string; label: string }) {
   return (
     <span className="flex items-center gap-2 text-[13px] font-bold">
@@ -159,8 +154,61 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
   const [miss, setMiss] = useState(0)
   const [copied, setCopied] = useState(false)
   const listRef = useRef<HTMLOListElement>(null)
+  // Signed in (not a guest): finished games are kept on the account, not just in this browser.
+  const signedIn = useOptionalAuth() !== null
+  const recorded = useRef(false)
+  // Set once this game's result is safely on the account; only then can rivals' results be shown.
+  const [synced, setSynced] = useState(false)
+  const [rivals, setRivals] = useState<RivalToday[]>([])
 
   useEffect(() => saveGame(day, game, names), [day, game, names])
+
+  // A finished game already on the account (played on another device, or before this browser's
+  // storage was cleared) wins over local progress, so a day can't be replayed for a better score.
+  useEffect(() => {
+    if (!signedIn) return
+    let cancelled = false
+    getResult(GAME_KEY, day)
+      .then((result) => {
+        if (cancelled || !result) return
+        const restored = rebuildGame(result.details.path, result.details.lives_left, names, hopper, puzzle)
+        if (restored && restored.status !== 'playing') setGame(restored)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [signedIn, day, names, hopper, puzzle])
+
+  // Record the result once the game is over. The server keeps the first result for a day, so this is
+  // safe to repeat (e.g. after a restore, or a game finished as a guest and then signed in).
+  useEffect(() => {
+    if (!signedIn || game.status === 'playing' || recorded.current) return
+    recorded.current = true
+    submitResult(GAME_KEY, {
+      puzzle_date: day,
+      score: game.status === 'won' ? suitcasesFor(puzzle.shortest, game.path.length - 1) : 0,
+      outcome: game.status === 'won' ? 'won' : 'lost',
+      details: {
+        path: game.path.map((id) => names[id]),
+        lives_left: game.lives,
+        borders: game.path.length - 1,
+        shortest: puzzle.shortest,
+      },
+    })
+      .then(() => setSynced(true))
+      .catch(() => {
+        recorded.current = false // not saved: try again next time this page is opened
+      })
+  }, [signedIn, game, day, names, puzzle])
+
+  // How your accepted rivals did today. The server only reveals their result once yours is recorded.
+  useEffect(() => {
+    if (!synced) return
+    listRivalsForDay(GAME_KEY, day)
+      .then(setRivals)
+      .catch(() => {})
+  }, [synced, day])
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
@@ -249,7 +297,7 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
           hops list room for 5 rows) so the list scrolls inside it and the typing bar stays in view. */}
       <div className={`flex flex-col gap-3 ${playing ? 'h-[max(34rem,calc(100svh-13.5rem))]' : ''}`}>
         <div className="flex items-center justify-between">
-          <Lives lives={game.lives} />
+          <Lives lives={game.lives} max={MAX_LIVES} />
           <span className="text-sm font-bold text-(--soft)">
             {borders} hop{borders === 1 ? '' : 's'}
           </span>
@@ -319,7 +367,7 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
           <section className="relative flex flex-col items-center gap-3 rounded-[24px] bg-(--card) p-5 text-center shadow-(--card-shadow)">
             {game.status === 'won' && <ScoreBurst kind="confetti" />}
             <h2 className="text-2xl font-extrabold">{game.status === 'won' ? 'You made it!' : 'Out of lives'}</h2>
-            <Suitcases count={suitcases} />
+            <DailyScore score={suitcases} max={MAX_SUITCASES} icon="🧳" label="suitcases" className="gap-1 text-4xl" />
             <p className="text-[15px] font-semibold text-(--soft)">
               {game.status === 'won'
                 ? borders === puzzle.shortest
@@ -334,8 +382,25 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
             >
               {copied ? 'Copied to clipboard!' : 'Share result'}
             </button>
+            {signedIn ? (
+              <Link
+                to={`/games/${GAME_KEY}/history`}
+                className="flex h-[48px] w-full items-center justify-center rounded-full bg-(--chip) text-[16px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+              >
+                Score history
+              </Link>
+            ) : (
+              <p className="text-xs font-semibold text-(--soft)">Sign in to keep a history of your scores.</p>
+            )}
             <p className="text-xs font-semibold text-(--soft)">A new puzzle arrives tomorrow.</p>
           </section>
+
+          {signedIn && <RivalsToday rivals={rivals} game={DAILY_GAMES[GAME_KEY]} />}
+          {signedIn && synced && rivals.length === 0 && (
+            <Link to="/game-scores" className="text-center text-[14px] font-bold text-(--soft) underline">
+              Challenge a friend to a daily rivalry
+            </Link>
+          )}
 
           <WorldMap
             world={world}
