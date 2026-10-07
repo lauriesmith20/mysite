@@ -1,7 +1,7 @@
 """Routes for head-to-head game score tracking between friends."""
 import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,8 @@ from backend.database import get_db
 from backend.features.accounts.models import AllowedAccount
 from backend.features.accounts.schemas import AccountSummary
 from backend.features.daily_games.registry import GAMES
+from backend.features.daily_games.schemas import ResultIn, ResultRead
+from backend.features.daily_games.service import record_result
 from backend.features.friends.models import Friendship, FriendshipStatus
 from backend.features.game_scores import daily_rivalry
 from backend.features.game_scores.models import Game, GameScoreHistory
@@ -346,6 +348,29 @@ def list_days(
             )
         )
     return out
+
+
+@router.post("/{game_id}/rival-result", response_model=ResultRead, status_code=status.HTTP_201_CREATED)
+def record_rival_result(
+    game_id: int,
+    payload: ResultIn,
+    response: Response,
+    account: AllowedAccount = Depends(require_approved_account),
+    db: Session = Depends(get_db),
+) -> ResultRead:
+    """Enters a result for the other player in a daily-game rivalry, for games played elsewhere (e.g. Wordle) where
+    it can't be checked against anything here. The first result for a day stands, as with a player's own."""
+    game = _get_game_for_participant(db, game_id, account.id)
+    if not daily_rivalry.is_active_rivalry(game):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This isn't a daily-game rivalry")
+    daily_game = GAMES[game.daily_game_key]  # type: ignore[index]
+    if not daily_game.entered_by_hand:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{daily_game.title} results can't be entered for someone else")
+    rival_id = game.opponent_id if game.creator_id == account.id else game.creator_id
+    result, created = record_result(db, rival_id, game.daily_game_key, payload)  # type: ignore[arg-type]
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return ResultRead.model_validate(result)
 
 
 @router.delete("/{game_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -58,6 +58,12 @@ export async function deleteResultDev(gameKey: string, day: string): Promise<voi
   await apiFetch(`/api/daily-games/${gameKey}/results/${day}`, { method: 'DELETE' })
 }
 
+/** The server's reason for refusing a result, if it gave one ("API error 422: {"detail":"..."}"). */
+export function serverReason(error: unknown): string | null {
+  const detail = error instanceof Error ? /"detail":"([^"]+)"/.exec(error.message) : null
+  return detail ? detail[1] : null
+}
+
 /** "Tue 6 Oct" for a puzzle day (YYYY-MM-DD). */
 export function formatPuzzleDay(day: string): string {
   return new Date(`${day}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })

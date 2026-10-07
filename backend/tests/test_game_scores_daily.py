@@ -354,3 +354,58 @@ def test_points_carried_over_from_a_hand_scored_game_add_to_days_won() -> None:
     listed = call(4, "get", "/api/game-scores/with/5").json()
     rivalry = next(g for g in listed if g["id"] == game["id"])
     assert (rivalry["creator_score"], rivalry["opponent_score"]) == (50, 41)
+
+
+# ── Entering a Wordle result by hand, for the rival too ──────────────────────────────────────────
+
+
+def _wordle_body(day: datetime.date, attempts: int | None) -> dict:
+    rows = attempts if attempts is not None else 6
+    return {
+        "puzzle_date": day.isoformat(),
+        "score": 7 - attempts if attempts is not None else 0,
+        "outcome": "won" if attempts is not None else "lost",
+        "details": {
+            "puzzle_number": (day - datetime.date(2021, 6, 19)).days,
+            "attempts": attempts,
+            "hard_mode": False,
+            "grid": ["⬜" * 5] * (rows - 1) + ["\U0001f7e9" * 5 if attempts is not None else "⬜" * 5],
+        },
+    }
+
+
+def test_a_wordle_result_can_be_entered_for_the_rival_and_the_first_one_stands() -> None:
+    befriend(1, 2)
+    game = challenge(1, 2, key="wordle")
+    accept(2, game["id"])
+    url = f"/api/game-scores/{game['id']}/rival-result"
+    day = _today() - datetime.timedelta(days=9)  # a day no other test records anything for
+
+    first = call(1, "post", url, json=_wordle_body(day, 3))
+    assert first.status_code == 201, first.text
+    # It was recorded for account 2 (the rival), not for the account that entered it.
+    assert call(2, "get", f"/api/daily-games/wordle/results/{day}").json()["score"] == 4
+    assert call(1, "get", f"/api/daily-games/wordle/results/{day}").status_code == 404
+
+    again = call(1, "post", url, json=_wordle_body(day, 5))
+    assert again.status_code == 200 and again.json()["score"] == 4
+
+    # A result that doesn't hang together is refused, same as someone's own.
+    bad = _wordle_body(day - datetime.timedelta(days=1), 3)
+    bad["score"] = 1
+    assert call(1, "post", url, json=bad).status_code == 422
+    # Someone who isn't in the rivalry can't enter results for it.
+    assert call(4, "post", url, json=_wordle_body(day, 3)).status_code == 404
+
+
+def test_results_for_games_played_here_cant_be_entered_for_someone_else() -> None:
+    befriend(1, 2)
+    game = challenge(1, 2, key=KEY)
+    accept(2, game["id"])
+    response = call(
+        1,
+        "post",
+        f"/api/game-scores/{game['id']}/rival-result",
+        json={"puzzle_date": _today().isoformat(), "score": 1, "outcome": "won", "details": {"lives_left": 1}},
+    )
+    assert response.status_code == 400

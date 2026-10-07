@@ -22,6 +22,26 @@ export function wordleDate(number: number): string {
   return new Date(EPOCH + number * DAY_MS).toISOString().slice(0, 10)
 }
 
+/** The Wordle number for a calendar date (YYYY-MM-DD). */
+export function wordleNumber(day: string): number {
+  return Math.round((Date.parse(`${day}T00:00:00Z`) - EPOCH) / DAY_MS)
+}
+
+/**
+ * The result to record for a hand-entered game: the day and how many guesses it took (null if it wasn't solved). The
+ * grid is filled in as grey guesses ending in the winning green row, since only the number of guesses matters.
+ */
+export function buildWordleResult(day: string, attempts: number | null): DailyResultInput {
+  const grey = '⬛'.repeat(5)
+  const rows = attempts === null ? Array(GUESSES).fill(grey) : [...Array(attempts - 1).fill(grey), '🟩'.repeat(5)]
+  return {
+    puzzle_date: day,
+    score: attempts === null ? 0 : GUESSES + 1 - attempts,
+    outcome: attempts === null ? 'lost' : 'won',
+    details: { puzzle_number: wordleNumber(day), attempts, hard_mode: false, grid: rows },
+  }
+}
+
 const SQUARES = new Set(['⬛', '⬜', '🟨', '🟩', '🟧', '🟦'])
 // High-contrast mode swaps green/yellow for orange/blue; store them as the usual colours.
 const STANDARD: Record<string, string> = { '🟧': '🟩', '🟦': '🟨' }

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ResultScore from '../components/ResultScore'
 import Lives from '../components/Lives'
+import ManualResultButton from '../components/ManualResultButton'
 import PasteResultButton from '../components/PasteResultButton'
 import { DAILY_GAMES } from '../lib/dailyGameRegistry'
-import { formatPuzzleDay, listResults, playStats, type DailyGameResult } from '../lib/dailyGames'
+import { submitResult, formatPuzzleDay, listResults, playStats, type DailyGameResult } from '../lib/dailyGames'
 import Page from '../shared/layout/Page'
 
 function Stat({ value, label }: { value: string; label: string }) {
@@ -40,6 +41,13 @@ export default function DailyGameHistoryPage() {
     [game, results, stats],
   )
 
+  function reloadResults() {
+    if (game)
+      listResults(game.key)
+        .then(setResults)
+        .catch(() => {})
+  }
+
   if (!game) {
     return (
       <Page title="Score history">
@@ -57,14 +65,14 @@ export default function DailyGameHistoryPage() {
       contentClassName="flex flex-col gap-4"
     >
       {game.paste && (
-        <PasteResultButton
-          game={game}
-          onRecorded={() =>
-            listResults(game.key)
-              .then(setResults)
-              .catch(() => {})
-          }
-        />
+        <div className="flex flex-col gap-3">
+          <PasteResultButton game={game} onRecorded={reloadResults} />
+          <ManualResultButton
+            game={game}
+            onRecorded={reloadResults}
+            targets={[{ label: 'You', save: (input) => submitResult(game.key, input) }]}
+          />
+        </div>
       )}
       {error ? (
         <p className="text-(--soft)">Couldn't load your results. Try again later.</p>

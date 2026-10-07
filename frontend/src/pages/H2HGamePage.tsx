@@ -10,6 +10,7 @@ import {
   getScoreHistory,
   hasUpdatedToday,
   listRivalDays,
+  submitRivalResult,
   updateGame,
   updateScore,
   type Game,
@@ -17,8 +18,9 @@ import {
   type ScoreHistoryEntry,
 } from '../lib/gameScores'
 import { DAILY_GAMES } from '../lib/dailyGameRegistry'
-import { hasSeenReveal, localDateKey, markRevealSeen } from '../lib/dailyGames'
+import { hasSeenReveal, localDateKey, markRevealSeen, submitResult } from '../lib/dailyGames'
 import EditGameModal from '../components/EditGameModal'
+import ManualResultButton from '../components/ManualResultButton'
 import PasteResultButton from '../components/PasteResultButton'
 import RivalDayList from '../components/RivalDayList'
 import RivalReveal from '../components/RivalReveal'
@@ -63,6 +65,15 @@ export default function H2HGamePage() {
   useEffect(() => {
     if (id) getScoreHistory(Number(id)).then(setHistory)
   }, [id])
+
+  // A new result (pasted or entered by hand, for either player) can decide the day, so refresh the tally as well as
+  // the day list.
+  function refreshAfterResult() {
+    getGame(Number(id)).then(setGame)
+    listRivalDays(Number(id))
+      .then(setDays)
+      .catch(() => {})
+  }
 
   async function handleScore(playerId: number) {
     if (!id || cooling) return
@@ -268,16 +279,18 @@ export default function H2HGamePage() {
         <ScoreBar mine={sides[0].score} theirs={sides[1].score} className="mx-auto mt-5 h-3 max-w-xs" />
       )}
       {isLiveRivalry && daily?.paste && (
-        <div className="mt-8">
-          <PasteResultButton
+        <div className="mt-8 flex flex-col gap-3">
+          <PasteResultButton game={daily} onRecorded={refreshAfterResult} />
+          <ManualResultButton
             game={daily}
-            onRecorded={() => {
-              // A new result can decide the day, so refresh the tally as well as the day list.
-              getGame(Number(id)).then(setGame)
-              listRivalDays(Number(id))
-                .then(setDays)
-                .catch(() => {})
-            }}
+            onRecorded={refreshAfterResult}
+            targets={[
+              { label: 'You', save: (input) => submitResult(daily.key, input) },
+              {
+                label: nameFor(game.creator.id === me.id ? game.opponent : game.creator),
+                save: (input) => submitRivalResult(Number(id), input),
+              },
+            ]}
           />
         </div>
       )}

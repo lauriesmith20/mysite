@@ -1,5 +1,5 @@
 import { apiFetch } from './api'
-import { localDateKey } from './dailyGames'
+import { localDateKey, type DailyGameResult, type DailyResultInput } from './dailyGames'
 import type { AccountSummary } from './friends'
 
 export interface Game {
@@ -164,6 +164,16 @@ export async function acceptChallenge(id: number): Promise<Game> {
 export async function declineChallenge(id: number): Promise<void> {
   const response = await apiFetch(`/api/game-scores/${id}/decline`, { method: 'POST' })
   if (!response.ok) await failure(response, 'Failed to decline challenge')
+}
+
+/** Enters a result for the other player in a rivalry (for games played elsewhere, like Wordle). */
+export async function submitRivalResult(gameId: number, input: DailyResultInput): Promise<DailyGameResult> {
+  const response = await apiFetch(`/api/game-scores/${gameId}/rival-result`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  return response.json()
 }
 
 export async function listRivalDays(id: number): Promise<RivalDay[]> {

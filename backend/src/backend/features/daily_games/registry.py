@@ -100,6 +100,9 @@ class DailyGame:
     rank_labels: tuple[str, ...]
     #: Extra checks on a submitted result; returns an error message, or None if it's fine.
     validate: Callable[[ResultIn], str | None] | None = None
+    #: Played elsewhere, so a result can't be checked against anything here: players may enter one by hand, for
+    #: themselves or for their rival.
+    entered_by_hand: bool = False
 
 
 GAMES: dict[str, DailyGame] = {
@@ -119,6 +122,7 @@ GAMES: dict[str, DailyGame] = {
             rank=_wordle_rank,
             rank_labels=("guesses",),
             validate=_validate_wordle,
+            entered_by_hand=True,
         ),
         DailyGame(
             key="shirt-game",

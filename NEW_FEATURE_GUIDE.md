@@ -89,6 +89,10 @@ a result (or null if it isn't recognised, which shows "<Game> result not detecte
 entry a `validate` function that re-checks the result hangs together (e.g. Wordle's puzzle number must be
 the one for that day). The `PasteResultButton` then appears on the game's rivalry page and history page.
 See `frontend/src/lib/wordle.ts` and the `wordle` entries in both registries.
+Such a game can also have results entered by hand (the "Enter result manually" button beside the paste button, which
+opens `WordleEntryModal`: pick the day and the number of guesses, then tap the squares). On a rivalry page that works
+for the other player too, through `POST /api/game-scores/{id}/rival-result`, which is only allowed for games whose
+backend entry sets `entered_by_hand=True` (results that can't be checked against anything here).
 
 **Rivalries come for free.** A registered game appears in the "Challenge to a daily game" picker on a
 friend's rivalry page. Once they accept, each puzzle day is won by whoever ranks higher (per the game's

@@ -1,14 +1,8 @@
 import { useState } from 'react'
 import type { DailyGameInfo } from '../lib/dailyGameRegistry'
-import { formatPuzzleDay, submitResult, type DailyGameResult } from '../lib/dailyGames'
+import { formatPuzzleDay, serverReason, submitResult, type DailyGameResult } from '../lib/dailyGames'
 
 type Status = { kind: 'ok' | 'error'; text: string } | null
-
-/** The server's reason for refusing a result, if it gave one ("API error 422: {"detail":"..."}"). */
-function serverReason(error: unknown): string | null {
-  const detail = error instanceof Error ? /"detail":"([^"]+)"/.exec(error.message) : null
-  return detail ? detail[1] : null
-}
 
 /**
  * A "paste" button, like a copy-result button the other way round, for games played elsewhere:
