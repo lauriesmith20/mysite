@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lan": "LAN=1 VITE_API_BASE_URL= vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -29,6 +30,7 @@
     "@types/topojson-client": "^3.1.5",
     "@types/topojson-simplify": "^3.0.3",
     "@types/topojson-specification": "^1.0.5",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^6.1.0",
     "d3-geo": "^3.1.1",
     "oxlint": "^1.79.0",

@@ -20,7 +20,7 @@ function Result({
   return (
     <div className="flex flex-col gap-1">
       <ResultScore game={game} result={result} className="gap-0.5 text-base" cellSize={14} />
-      {lives && <Lives lives={lives.left} max={lives.max} size={12} />}
+      {lives && <Lives lives={lives.left} max={lives.max} size={12} icon={lives.icon} />}
       {short && <span className="text-[12px] font-extrabold text-(--soft)">{short}</span>}
     </div>
   )

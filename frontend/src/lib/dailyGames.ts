@@ -53,6 +53,11 @@ export async function getResult(gameKey: string, day: string): Promise<DailyGame
   }
 }
 
+/** Dev only: forgets your result for a day so it can be played again. A deployed backend answers 404. */
+export async function deleteResultDev(gameKey: string, day: string): Promise<void> {
+  await apiFetch(`/api/daily-games/${gameKey}/results/${day}`, { method: 'DELETE' })
+}
+
 /** "Tue 6 Oct" for a puzzle day (YYYY-MM-DD). */
 export function formatPuzzleDay(day: string): string {
   return new Date(`${day}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })

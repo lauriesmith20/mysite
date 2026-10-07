@@ -1,4 +1,5 @@
 import { MAX_LIVES } from './countryHopperGame'
+import { MAX_LIVES as SHIRT_LIVES } from './shirtGame'
 import type { DailyGameResult, DailyResultInput } from './dailyGames'
 import { parseWordle } from './wordle'
 
@@ -49,7 +50,7 @@ export interface DailyGameInfo {
   /** An optional very short label for a result (e.g. "4/6"), shown under the score in compact views. */
   short?: (result: { details: Record<string, unknown>; outcome: 'won' | 'lost' }) => string
   /** For games with lives: how many were left, shown under the score. Omit for games without lives. */
-  lives?: (result: { details: Record<string, unknown> }) => { left: number; max: number } | null
+  lives?: (result: { details: Record<string, unknown> }) => { left: number; max: number; icon?: string } | null
 }
 
 function count(value: unknown): number | null {
@@ -111,6 +112,26 @@ export const DAILY_GAMES: Record<string, DailyGameInfo> = {
       notDetected: 'Wordle result not detected',
       buttonLabel: "Paste today's Wordle result",
       hint: 'Share your result from Wordle, then tap paste.',
+    },
+  },
+  'shirt-game': {
+    key: 'shirt-game',
+    title: 'Name the Shirt',
+    playPath: '/shirt-game',
+    home: { to: '/shirt-game', label: 'Back to Name the Shirt' },
+    blurb: 'Guess the team, season and player from a shirt',
+    maxScore: 3,
+    scoreIcon: '⚽',
+    describe: ({ details, outcome }) => {
+      if (outcome === 'lost' && !Array.isArray(details.stages)) return 'Out of lives'
+      const stages = Array.isArray(details.stages) ? details.stages : []
+      const names = ['Team', 'Season', 'Player']
+      const text = names.map((name, i) => `${name} ${stages[i] === true ? '✓' : '✗'}`).join(' · ')
+      return outcome === 'lost' ? `Out of lives · ${text}` : text
+    },
+    lives: ({ details }) => {
+      const left = count(details.lives_left)
+      return left === null ? null : { left, max: SHIRT_LIVES, icon: '🧤' }
     },
   },
 }

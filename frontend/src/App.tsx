@@ -22,6 +22,7 @@ import ProfilePage from './pages/ProfilePage'
 import RecipePage from './pages/RecipePage'
 import RecipesPage from './pages/RecipesPage'
 import SettingsPage from './pages/SettingsPage'
+import ShirtGamePage from './pages/ShirtGamePage'
 
 // Loaded on demand: pulls in the map libraries and country data.
 const CountryHopperPage = lazy(() => import('./pages/CountryHopperPage'))
@@ -36,6 +37,7 @@ function SignedInRoutes() {
         <Route path="/game-scores" element={<GameScoresPage />} />
         <Route path="/game-scores/:friendId" element={<GameScoresFriendPage />} />
         <Route path="/h2h-game/:id" element={<H2HGamePage />} />
+        <Route path="/shirt-game" element={<ShirtGamePage />} />
         <Route path="/games/:gameKey/history" element={<DailyGameHistoryPage />} />
         <Route path="/plant-quiz" element={<PlantQuizMenuPage />} />
         <Route path="/plant-quiz/leaderboards" element={<PlantQuizLeaderboardsPage />} />

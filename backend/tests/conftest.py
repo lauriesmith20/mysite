@@ -15,6 +15,7 @@ from backend.features.game_scores import (
     models as _game_scores_models,  # noqa: F401
 )
 from backend.features.recipes import models as _recipes_models  # noqa: F401
+from backend.features.shirt_game import models as _shirt_game_models  # noqa: F401
 from backend.features.tiles import models as _tiles_models  # noqa: F401
 
 Base.metadata.create_all(bind=engine)

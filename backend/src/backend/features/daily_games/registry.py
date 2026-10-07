@@ -65,6 +65,29 @@ def _validate_wordle(payload: ResultIn) -> str | None:
     return None
 
 
+# ── Name the Shirt (a shirt with a number: guess the team, the season, then the player) ────────────────
+
+SHIRT_STAGES = 3
+SHIRT_LIVES = 3
+
+
+def _shirt_rank(result: DailyGameResult) -> RankKey:
+    """Stages right, then lives left."""
+    return (result.score, _number((result.details or {}).get("lives_left")))
+
+
+def _validate_shirt(payload: ResultIn) -> str | None:
+    details = payload.details
+    lives = details.get("lives_left")
+    if not isinstance(lives, int) or isinstance(lives, bool) or not 0 <= lives <= SHIRT_LIVES:
+        return f"Lives left must be 0 to {SHIRT_LIVES}"
+    if (payload.outcome == "won") != (payload.score == SHIRT_STAGES):
+        return "A shirt is won by getting all three stages right"
+    if payload.outcome == "won" and lives == 0:
+        return "You can't finish with no lives left"
+    return None
+
+
 @dataclass(frozen=True)
 class DailyGame:
     key: str
@@ -96,6 +119,14 @@ GAMES: dict[str, DailyGame] = {
             rank=_wordle_rank,
             rank_labels=("guesses",),
             validate=_validate_wordle,
+        ),
+        DailyGame(
+            key="shirt-game",
+            title="Name the Shirt",
+            max_score=SHIRT_STAGES,  # team, season, player
+            rank=_shirt_rank,
+            rank_labels=("stages", "lives"),
+            validate=_validate_shirt,
         ),
     ]
 }

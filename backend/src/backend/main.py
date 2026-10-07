@@ -18,6 +18,7 @@ from backend.features.plant_quiz.router import router as plant_quiz_router
 # Registers recipes' tools onto the shared mcp.mcp_server as an import side effect.
 from backend.features.recipes import mcp_tools as _recipes_mcp_tools  # noqa: F401
 from backend.features.recipes.router import router as recipes_router
+from backend.features.shirt_game.router import router as shirt_game_router
 from backend.features.tiles.router import public_router as tiles_public_router
 from backend.features.tiles.router import router as tiles_router
 from backend.logging_config import configure_logging, get_logger
@@ -77,6 +78,7 @@ app.include_router(recipes_router, dependencies=[Depends(require_approved_accoun
 app.include_router(friends_router, dependencies=[Depends(require_approved_account)])
 app.include_router(beer_bets_router, dependencies=[Depends(require_approved_account)])
 app.include_router(daily_games_router, dependencies=[Depends(require_approved_account)])
+app.include_router(shirt_game_router, dependencies=[Depends(require_approved_account)])
 
 # Mounted last: it's a root-level ("/") mount, so more specific routes above must be tried first.
 mcp.mount(app)

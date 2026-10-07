@@ -33,7 +33,7 @@ export default function RivalsToday({ rivals, game }: { rivals: RivalToday[]; ga
                       label="points"
                       className="gap-0.5 text-base"
                     />
-                    {lives && <Lives lives={lives.left} max={lives.max} size={12} />}
+                    {lives && <Lives lives={lives.left} max={lives.max} size={12} icon={lives.icon} />}
                   </div>
                 ) : (
                   <span className="shrink-0 text-[13px] font-semibold text-(--soft)">

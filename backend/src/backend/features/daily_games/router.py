@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.auth import require_approved_account
+from backend.config import get_settings
 from backend.database import get_db
 from backend.features.accounts.models import AllowedAccount
 from backend.features.accounts.schemas import AccountSummary
@@ -123,6 +124,24 @@ def get_result(
     if stored is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No result for that day")
     return stored
+
+
+@router.delete("/{game_key}/results/{puzzle_date}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_result(
+    game_key: str,
+    puzzle_date: datetime.date,
+    account: AllowedAccount = Depends(require_approved_account),
+    db: Session = Depends(get_db),
+) -> None:
+    """Dev only: forgets the caller's result for a day so it can be played again. Results are final everywhere
+    else, so this answers 404 unless the backend is running locally."""
+    if get_settings().environment != "local":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    _game(game_key)
+    stored = _existing(db, account, game_key, puzzle_date)
+    if stored is not None:
+        db.delete(stored)
+        db.commit()
 
 
 @router.get("/{game_key}/rivals/{puzzle_date}", response_model=list[RivalToday])

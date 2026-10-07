@@ -1,4 +1,4 @@
-import { Beer, ChefHat, HelpCircle, Route, Sprout, Swords, type LucideIcon } from 'lucide-react'
+import { Beer, ChefHat, HelpCircle, Route, Shirt, Sprout, Swords, type LucideIcon } from 'lucide-react'
 
 const icons: Record<string, LucideIcon> = {
   swords: Swords,
@@ -6,6 +6,7 @@ const icons: Record<string, LucideIcon> = {
   'chef-hat': ChefHat,
   beer: Beer,
   route: Route,
+  shirt: Shirt,
 }
 
 export function getIcon(name: string | null): LucideIcon {
