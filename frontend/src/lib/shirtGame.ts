@@ -1,6 +1,6 @@
 import { apiFetch } from './api'
 
-// Name the Shirt: a shirt with a number on it, and you guess the team, the season, then the player.
+// Squad Numbers: a shirt with a number on it, and you guess the team, the season, then the player.
 // The backend (features/shirt_game) holds the answers: it checks each guess and only reveals them as
 // you get them right, or once the day is finished. Results go through the shared daily-games routes.
 
@@ -88,5 +88,5 @@ export function shareText({
   const date = new Date(`${day}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   const goals = stages.map((ok) => (ok ? '⚽' : '⬜')).join('')
   const lives = `${'🧤'.repeat(livesLeft)}${'⬜'.repeat(MAX_LIVES - livesLeft)}`
-  return `Name the Shirt ${date}\n${goals}  ${lives}\n${url}`
+  return `Squad Numbers ${date}\n${goals}  ${lives}\n${url}`
 }

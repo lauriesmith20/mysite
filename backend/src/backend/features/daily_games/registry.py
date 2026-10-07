@@ -65,7 +65,7 @@ def _validate_wordle(payload: ResultIn) -> str | None:
     return None
 
 
-# ── Name the Shirt (a shirt with a number: guess the team, the season, then the player) ────────────────
+# ── Squad Numbers (a shirt with a number: guess the team, the season, then the player) ────────────────
 
 SHIRT_STAGES = 3
 SHIRT_LIVES = 3
@@ -122,7 +122,7 @@ GAMES: dict[str, DailyGame] = {
         ),
         DailyGame(
             key="shirt-game",
-            title="Name the Shirt",
+            title="Squad Numbers",
             max_score=SHIRT_STAGES,  # team, season, player
             rank=_shirt_rank,
             rank_labels=("stages", "lives"),

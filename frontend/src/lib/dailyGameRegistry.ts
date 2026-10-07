@@ -116,10 +116,10 @@ export const DAILY_GAMES: Record<string, DailyGameInfo> = {
   },
   'shirt-game': {
     key: 'shirt-game',
-    title: 'Name the Shirt',
+    title: 'Squad Numbers',
     playPath: '/shirt-game',
-    home: { to: '/shirt-game', label: 'Back to Name the Shirt' },
-    blurb: 'Guess the team, season and player from a shirt',
+    home: { to: '/shirt-game', label: 'Back to Squad Numbers' },
+    blurb: 'Whose shirt is this? Guess the team, season and player',
     maxScore: 3,
     scoreIcon: '⚽',
     describe: ({ details, outcome }) => {

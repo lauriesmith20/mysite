@@ -466,11 +466,7 @@ export default function ShirtGamePage() {
   }, [state])
 
   return (
-    <Page
-      title="Name the Shirt"
-      subtitle="Guess the team, the season, then the player. Three lives."
-      subtitleClassName="text-sm"
-    >
+    <Page title="Squad Numbers" subtitle="Whose shirt is this?" subtitleClassName="text-sm">
       {state.status === 'loading' && <p className="text-center text-(--soft)">Finding today's shirt…</p>}
       {state.status === 'error' && (
         <div className="flex flex-col items-center gap-3 text-center">
