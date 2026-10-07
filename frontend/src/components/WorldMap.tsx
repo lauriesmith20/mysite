@@ -4,7 +4,7 @@ import { loadFineOutlines, MAP_HEIGHT, MAP_WIDTH, type Country, type World } fro
 
 const MAX_ZOOM = 40
 // Zoom level beyond which the full-detail outlines replace the simplified ones.
-const FINE_ZOOM = 4
+const FINE_ZOOM = 8
 
 interface View {
   k: number
