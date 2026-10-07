@@ -7,7 +7,7 @@ from backend.features.shirt_game import data
 from backend.main import app
 
 client = TestClient(app)
-DAY = datetime.date(2026, 10, 7)
+DAY = datetime.datetime.now(datetime.UTC).date()  # puzzles are only built for days around today
 URL = f"/api/shirt-game/puzzles/{DAY}"
 
 
@@ -64,20 +64,28 @@ def test_guesses_are_checked_and_answers_only_given_when_right() -> None:
     assert player["answer"] == puzzle.player and player["squad"] is None
 
 
-def test_the_answer_is_withheld_until_the_day_is_finished() -> None:
-    day = datetime.date(2026, 10, 8)
+def test_the_answers_are_available_to_anyone() -> None:
+    day = DAY + datetime.timedelta(days=1)
     url = f"/api/shirt-game/puzzles/{day}"
-    client.get(url)
-    assert client.get(f"{url}/answer").status_code == 403
-
-    posted = client.post(
-        "/api/daily-games/shirt-game/results",
-        json={"puzzle_date": str(day), "score": 1, "outcome": "lost", "details": {"lives_left": 0}},
-    )
-    assert posted.status_code == 201
     answer = client.get(f"{url}/answer").json()
     puzzle = data.pick(day)
     assert answer["player"] == puzzle.player and answer["season"] == puzzle.season
+    assert answer["team"] == data.display_name(puzzle.club) and answer["squad"] == puzzle.squad
+
+
+def test_the_shirt_routes_need_no_sign_in() -> None:
+    from backend.auth import require_approved_account
+
+    saved = app.dependency_overrides.pop(require_approved_account)
+    try:
+        assert client.get(URL).status_code == 200
+        assert client.post(f"{URL}/guess", json={"stage": "team", "value": "x"}).status_code == 200
+    finally:
+        app.dependency_overrides[require_approved_account] = saved
+
+
+def test_old_days_are_not_built() -> None:
+    assert client.get("/api/shirt-game/puzzles/2026-01-01").status_code == 404
 
 
 def test_far_future_days_are_refused() -> None:

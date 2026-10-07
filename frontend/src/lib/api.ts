@@ -36,8 +36,8 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 }
 
 // For endpoints that need no sign-in (guest pages): never attaches a token or triggers a login redirect.
-export async function publicFetch(path: string): Promise<Response> {
-  const response = await fetch(`${API_BASE_URL}${path}`)
+export async function publicFetch(path: string, init?: RequestInit): Promise<Response> {
+  const response = await fetch(`${API_BASE_URL}${path}`, init)
   if (!response.ok) {
     throw new Error(`API error ${response.status}: ${await response.text()}`)
   }

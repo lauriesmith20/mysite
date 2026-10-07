@@ -78,7 +78,8 @@ app.include_router(recipes_router, dependencies=[Depends(require_approved_accoun
 app.include_router(friends_router, dependencies=[Depends(require_approved_account)])
 app.include_router(beer_bets_router, dependencies=[Depends(require_approved_account)])
 app.include_router(daily_games_router, dependencies=[Depends(require_approved_account)])
-app.include_router(shirt_game_router, dependencies=[Depends(require_approved_account)])
+# Public so guests can play; saving results goes through the signed-in daily-games routes.
+app.include_router(shirt_game_router)
 
 # Mounted last: it's a root-level ("/") mount, so more specific routes above must be tried first.
 mcp.mount(app)

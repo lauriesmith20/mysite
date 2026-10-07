@@ -1,8 +1,9 @@
-import { apiFetch } from './api'
+import { publicFetch } from './api'
 
 // Squad Numbers: a shirt with a number on it, and you guess the team, the season, then the player.
 // The backend (features/shirt_game) holds the answers: it checks each guess and only reveals them as
-// you get them right, or once the day is finished. Results go through the shared daily-games routes.
+// you get them right, or when the game is over. These routes need no sign-in, so guests can play; results of
+// signed-in players go through the shared daily-games routes.
 
 export const GAME_KEY = 'shirt-game'
 export const MAX_LIVES = 3
@@ -50,12 +51,12 @@ export interface ShirtAnswer {
 }
 
 export async function getShirtPuzzle(day: string): Promise<ShirtPuzzle> {
-  const response = await apiFetch(`/api/shirt-game/puzzles/${day}`)
+  const response = await publicFetch(`/api/shirt-game/puzzles/${day}`)
   return response.json()
 }
 
 export async function guess(day: string, stage: Stage, value: string): Promise<GuessResult> {
-  const response = await apiFetch(`/api/shirt-game/puzzles/${day}/guess`, {
+  const response = await publicFetch(`/api/shirt-game/puzzles/${day}/guess`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ stage, value }),
@@ -63,9 +64,9 @@ export async function guess(day: string, stage: Stage, value: string): Promise<G
   return response.json()
 }
 
-/** All the answers. Only works once your result for that day is recorded. */
+/** All the answers, for showing once the game is over. */
 export async function getShirtAnswer(day: string): Promise<ShirtAnswer> {
-  const response = await apiFetch(`/api/shirt-game/puzzles/${day}/answer`)
+  const response = await publicFetch(`/api/shirt-game/puzzles/${day}/answer`)
   return response.json()
 }
 

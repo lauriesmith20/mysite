@@ -29,6 +29,7 @@ import {
   type ShirtPuzzle,
   type Stage,
 } from '../lib/shirtGame'
+import { useOptionalAuth } from '../shared/auth/AuthGate'
 import Page from '../shared/layout/Page'
 
 const STAGE_LABELS: Record<Stage, string> = { team: 'Team', season: 'Season', player: 'Player' }
@@ -227,6 +228,7 @@ function Finished({
 }) {
   const score = outcome.stages.filter(Boolean).length
   const won = score === STAGES.length
+  const signedIn = useOptionalAuth() !== null
   const [saved, setSaved] = useState(!record)
   const [answer, setAnswer] = useState<ShirtAnswer | null>(null)
   const [rivals, setRivals] = useState<RivalToday[]>([])
@@ -234,10 +236,15 @@ function Finished({
   const [problem, setProblem] = useState<string | null>(null)
   const started = useRef(false)
 
-  // Save the result (the first one for a day is final), then everything that's only shown once it's saved.
+  // The answer shows for everyone. A signed-in player's result is saved (the first one for a day is final), and
+  // only then are their rivals' results shown; guests just play for fun.
   useEffect(() => {
     if (started.current) return
     started.current = true
+    getShirtAnswer(day)
+      .then(setAnswer)
+      .catch(() => setProblem("Couldn't load the answer. Refresh to try again."))
+    if (!signedIn) return
     const save = record
       ? submitResult(GAME_KEY, {
           puzzle_date: day,
@@ -249,14 +256,11 @@ function Finished({
     save
       .then(() => {
         setSaved(true)
-        return Promise.all([getShirtAnswer(day), listRivalsForDay(GAME_KEY, day)])
+        return listRivalsForDay(GAME_KEY, day)
       })
-      .then(([shown, rivalsToday]) => {
-        setAnswer(shown)
-        setRivals(rivalsToday)
-      })
+      .then(setRivals)
       .catch(() => setProblem("Couldn't save your result. Refresh to try again."))
-  }, [record, day, score, won, outcome])
+  }, [signedIn, record, day, score, won, outcome])
 
   async function share() {
     const text = shareText({
@@ -303,16 +307,20 @@ function Finished({
         >
           {copied ? 'Copied to clipboard!' : 'Share result'}
         </button>
-        <Link
-          to={`/games/${GAME_KEY}/history`}
-          className="flex h-[48px] w-full items-center justify-center rounded-full bg-(--chip) text-[16px] font-extrabold text-(--ink) transition active:scale-[0.97]"
-        >
-          Score history
-        </Link>
+        {signedIn ? (
+          <Link
+            to={`/games/${GAME_KEY}/history`}
+            className="flex h-[48px] w-full items-center justify-center rounded-full bg-(--chip) text-[16px] font-extrabold text-(--ink) transition active:scale-[0.97]"
+          >
+            Score history
+          </Link>
+        ) : (
+          <p className="text-xs font-semibold text-(--soft)">Sign in to keep a history of your scores.</p>
+        )}
         <p className="text-xs font-semibold text-(--soft)">A new shirt arrives tomorrow.</p>
       </section>
-      <RivalsToday rivals={rivals} game={DAILY_GAMES[GAME_KEY]} />
-      {saved && rivals.length === 0 && (
+      {signedIn && <RivalsToday rivals={rivals} game={DAILY_GAMES[GAME_KEY]} />}
+      {signedIn && saved && rivals.length === 0 && (
         <Link to="/game-scores" className="text-center text-[14px] font-bold text-(--soft) underline">
           Challenge a friend to a daily rivalry
         </Link>
@@ -443,16 +451,17 @@ export default function ShirtGamePage() {
     | { status: 'ready'; puzzle: ShirtPuzzle; result: DailyGameResult | null }
   >({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const signedIn = useOptionalAuth() !== null
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([getShirtPuzzle(day), getResult(GAME_KEY, day)])
+    Promise.all([getShirtPuzzle(day), signedIn ? getResult(GAME_KEY, day) : Promise.resolve(null)])
       .then(([puzzle, result]) => !cancelled && setState({ status: 'ready', puzzle, result }))
       .catch(() => !cancelled && setState({ status: 'error' }))
     return () => {
       cancelled = true
     }
-  }, [day, attempt])
+  }, [day, attempt, signedIn])
 
   // A result already on the account is final: show it rather than letting the day be replayed.
   const restored = useMemo<Outcome | null>(() => {

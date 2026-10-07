@@ -1,8 +1,8 @@
-"""Routes for the shirt game: a day's shirt, checking guesses, and the answers once you've finished.
+"""Routes for the shirt game: a day's shirt, checking guesses, and the answers.
 
-Answers stay on the server: the shirt endpoint doesn't include them, each guess is checked here, and
-the full answers only come back once the caller has a recorded result for that day. Results themselves
-go through the shared daily-games routes under the "shirt-game" key.
+These need no sign-in, so guests can play. The shirt endpoint doesn't include the answers (each guess is checked
+here and the answers are fetched when the game is over), but nothing stops someone asking early: it's a casual
+game. Results of signed-in players go through the shared daily-games routes under the "shirt-game" key.
 """
 import datetime
 
@@ -10,10 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.auth import require_approved_account
 from backend.database import get_db
-from backend.features.accounts.models import AllowedAccount
-from backend.features.daily_games.models import DailyGameResult
 from backend.features.shirt_game import data
 from backend.features.shirt_game.models import ShirtPuzzle
 from backend.features.shirt_game.schemas import (
@@ -25,7 +22,9 @@ from backend.features.shirt_game.schemas import (
 
 router = APIRouter(prefix="/api/shirt-game", tags=["shirt-game"])
 
-GAME_KEY = "shirt-game"
+#: A puzzle is only built for today and the days either side of it (players' local dates can differ from UTC
+#: by up to a day), so a public route can't be used to fill the database with old days.
+DAYS_AROUND_TODAY = 1
 
 
 def _normal(text: str) -> str:
@@ -37,6 +36,8 @@ def _puzzle(db: Session, day: datetime.date) -> ShirtPuzzle:
     existing = db.query(ShirtPuzzle).filter(ShirtPuzzle.puzzle_date == day).first()
     if existing is not None:
         return existing
+    if abs((day - datetime.datetime.now(datetime.UTC).date()).days) > DAYS_AROUND_TODAY:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No shirt for that day")
     choice = data.pick(day)
     puzzle = ShirtPuzzle(
         puzzle_date=day,
@@ -96,29 +97,7 @@ def guess(puzzle_date: datetime.date, payload: GuessIn, db: Session = Depends(ge
 
 
 @router.get("/puzzles/{puzzle_date}/answer", response_model=AnswerRead)
-def get_answer(
-    puzzle_date: datetime.date,
-    account: AllowedAccount = Depends(require_approved_account),
-    db: Session = Depends(get_db),
-) -> AnswerRead:
-    """Only for someone who has finished that day, so it can't be used to look the answer up early."""
-    finished = (
-        db.query(DailyGameResult)
-        .filter(
-            DailyGameResult.account_id == account.id,
-            DailyGameResult.game_key == GAME_KEY,
-            DailyGameResult.puzzle_date == puzzle_date,
-        )
-        .first()
-    )
-    if finished is None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Finish the day's shirt to see the answer")
-    puzzle = db.query(ShirtPuzzle).filter(ShirtPuzzle.puzzle_date == puzzle_date).first()
-    if puzzle is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No shirt for that day")
-    return AnswerRead(
-        team=puzzle.club,
-        season=puzzle.season,
-        player=puzzle.player,
-        squad=puzzle.squad,
-    )
+def get_answer(puzzle_date: datetime.date, db: Session = Depends(get_db)) -> AnswerRead:
+    _check_day(puzzle_date)
+    puzzle = _puzzle(db, puzzle_date)
+    return AnswerRead(team=puzzle.club, season=puzzle.season, player=puzzle.player, squad=puzzle.squad)
