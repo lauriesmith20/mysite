@@ -8,7 +8,7 @@ import Lives from '../components/Lives'
 import RivalsToday from '../components/RivalsToday'
 import ScoreBurst from '../components/ScoreBurst'
 import WorldMap, { HATCH_FILL, type MapLine } from '../components/WorldMap'
-import { loadWorld, type World } from '../lib/countryGraph'
+import { loadWorld, WORLD_GRAPH, type World } from '../lib/countryGraph'
 import {
   MAX_LIVES,
   MAX_SUITCASES,
@@ -144,8 +144,16 @@ function LegendChip({ swatch, label }: { swatch: string; label: string }) {
 
 // ── One day's round ──────────────────────────────────────────────────────────────────────────────
 
-function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWorld; puzzle: Puzzle; day: string }) {
-  const names = useMemo(() => world.countries.map((c) => c.name), [world])
+function Round({ hopper, puzzle, day }: { hopper: HopperWorld; puzzle: Puzzle; day: string }) {
+  const names = WORLD_GRAPH.names
+  // The outlines are big, so they load in the background while you play; only the result map needs them.
+  const [world, setWorld] = useState<World | null>(null)
+  const [mapFailed, setMapFailed] = useState(false)
+  useEffect(() => {
+    loadWorld()
+      .then(setWorld)
+      .catch(() => setMapFailed(true))
+  }, [])
   const [game, setGame] = useState<GameState>(
     () => loadGame(day, names, hopper, puzzle) ?? { path: [puzzle.start], lives: MAX_LIVES, status: 'playing' },
   )
@@ -402,16 +410,22 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
             </Link>
           )}
 
-          <WorldMap
-            world={world}
-            fills={fills}
-            lines={lines}
-            labelIds={framed.ids}
-            frame={framed}
-            hatch={{ a: YOURS_COLOR, b: SHORTEST_COLOR }}
-            svgClassName="h-[48svh] md:aspect-[960/500] md:h-auto"
-            ariaLabel="World map showing your route in gold and the shortest route in green."
-          />
+          {world ? (
+            <WorldMap
+              world={world}
+              fills={fills}
+              lines={lines}
+              labelIds={framed.ids}
+              frame={framed}
+              hatch={{ a: YOURS_COLOR, b: SHORTEST_COLOR }}
+              svgClassName="h-[48svh] md:aspect-[960/500] md:h-auto"
+              ariaLabel="World map showing your route in gold and the shortest route in green."
+            />
+          ) : (
+            <p className="rounded-[28px] bg-(--card) p-6 text-center text-(--soft) shadow-(--card-shadow)">
+              {mapFailed ? "Couldn't load the map. Refresh to try again." : 'Loading map…'}
+            </p>
+          )}
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             <LegendChip swatch={YOURS_COLOR} label="Your route" />
             <LegendChip swatch={SHORTEST_COLOR} label="Shortest route" />
@@ -429,20 +443,12 @@ function Round({ world, hopper, puzzle, day }: { world: World; hopper: HopperWor
 // ── Page ─────────────────────────────────────────────────────────────────────────────────────────
 
 export default function CountryHopperPage() {
-  const [world, setWorld] = useState<World | null>(null)
-  const [error, setError] = useState(false)
   const [params] = useSearchParams()
   // Dev builds can preview any day's puzzle with ?date=YYYY-MM-DD.
   const day = (import.meta.env.DEV && params.get('date')) || dateKey()
 
-  useEffect(() => {
-    loadWorld()
-      .then(setWorld)
-      .catch(() => setError(true))
-  }, [])
-
-  const hopper = useMemo(() => (world ? buildHopperWorld(world) : null), [world])
-  const puzzle = useMemo(() => (hopper ? pickDailyPuzzle(hopper.adjacency, day) : null), [hopper, day])
+  const hopper = useMemo(() => buildHopperWorld(WORLD_GRAPH), [])
+  const puzzle = useMemo(() => pickDailyPuzzle(hopper.adjacency, day), [hopper, day])
 
   return (
     <Page
@@ -450,14 +456,10 @@ export default function CountryHopperPage() {
       subtitle={`Daily puzzle #${puzzleNumber(day)}: hop from border to border to reach the destination.`}
       subtitleClassName="text-sm"
     >
-      {error ? (
-        <p className="text-center text-(--soft)">Couldn't load the map. Refresh to try again.</p>
-      ) : !world || !hopper ? (
-        <p className="text-center text-(--soft)">Loading map…</p>
-      ) : !puzzle ? (
+      {!puzzle ? (
         <p className="text-center text-(--soft)">Couldn't set today's puzzle. Try again later.</p>
       ) : (
-        <Round key={day} world={world} hopper={hopper} puzzle={puzzle} day={day} />
+        <Round key={day} hopper={hopper} puzzle={puzzle} day={day} />
       )}
     </Page>
   )

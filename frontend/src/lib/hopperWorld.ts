@@ -1,4 +1,4 @@
-import type { World } from './countryGraph'
+import type { WorldGraph } from './countryGraph'
 import { normalise, type Adjacency, type Candidate } from './countryHopperGame'
 import { COUNTRY_META } from './countryMeta'
 
@@ -16,18 +16,18 @@ export interface HopperWorld {
   candidates: Candidate[]
 }
 
-export function buildHopperWorld(world: World): HopperWorld {
-  const names = world.countries.map((c) => c.name)
+export function buildHopperWorld(world: WorldGraph): HopperWorld {
+  const names = world.names
   const playable = names.map((name) => name in COUNTRY_META)
 
   const adjacency = world.adjacency.map((neighbours, i) => (playable[i] ? neighbours.filter((j) => playable[j]) : []))
   const labels = names.map((name) => COUNTRY_META[name]?.label ?? name)
   const codes = names.map((name) => COUNTRY_META[name]?.code ?? '')
-  const candidates = world.countries.flatMap((country) => {
-    const meta = COUNTRY_META[country.name]
+  const candidates = names.flatMap((name, id) => {
+    const meta = COUNTRY_META[name]
     if (!meta) return []
-    const terms = [labels[country.id], country.name, ...(meta.aliases ?? [])].map(normalise)
-    return [{ id: country.id, label: labels[country.id], terms: [...new Set(terms)] }]
+    const terms = [labels[id], name, ...(meta.aliases ?? [])].map(normalise)
+    return [{ id, label: labels[id], terms: [...new Set(terms)] }]
   })
   return { adjacency, labels, codes, candidates }
 }
