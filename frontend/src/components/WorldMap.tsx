@@ -1,6 +1,6 @@
 import { Minus, Plus } from 'lucide-react'
 import { memo, useEffect, useRef, useState } from 'react'
-import { MAP_HEIGHT, MAP_WIDTH, type Country, type World } from '../lib/countryGraph'
+import { loadFineOutlines, MAP_HEIGHT, MAP_WIDTH, type Country, type World } from '../lib/countryGraph'
 
 const MAX_ZOOM = 40
 // Zoom level beyond which the full-detail outlines replace the simplified ones.
@@ -56,14 +56,15 @@ const Land = memo(function Land({
 }: {
   countries: Country[]
   fills: Map<number, string>
-  fine: boolean
+  /** Full-detail outlines by country id, once zoomed in far enough to want them (and they've loaded). */
+  fine: string[] | null
 }) {
   return (
     <>
       {countries.map((c) => (
         <path
           key={c.id}
-          d={fine ? c.dFine : c.d}
+          d={fine ? fine[c.id] : c.d}
           data-id={c.id}
           fill={fills.get(c.id) ?? 'var(--land)'}
           stroke="var(--card)"
@@ -122,6 +123,12 @@ export default function WorldMap({
   const [viewH, setViewH] = useState(MAP_HEIGHT)
   const [unit, setUnit] = useState(1) // map units per CSS pixel, so lines/labels keep a fixed on-screen size
   const [appliedFrame, setAppliedFrame] = useState<number | undefined>(undefined)
+  // Fetched the first time the map is zoomed in far enough; the coarse outlines are shown until it arrives.
+  const [fineOutlines, setFineOutlines] = useState<string[] | null>(null)
+  const wantsFine = view.k >= FINE_ZOOM
+  useEffect(() => {
+    if (wantsFine) loadFineOutlines().then(setFineOutlines, () => {})
+  }, [wantsFine])
   const svgRef = useRef<SVGSVGElement>(null)
   const touched = useRef(false) // once the user moves the map we stop re-fitting it on resize
   const frameRef = useRef(frame)
@@ -151,11 +158,7 @@ export default function WorldMap({
       setViewH(h)
       setUnit(MAP_WIDTH / rect.width)
       setView((v) =>
-        touched.current
-          ? clampView(v, h)
-          : frameRef.current
-            ? fitView(world, frameRef.current.ids, h)
-            : homeView(h),
+        touched.current ? clampView(v, h) : frameRef.current ? fitView(world, frameRef.current.ids, h) : homeView(h),
       )
     }
     measure()
@@ -269,7 +272,7 @@ export default function WorldMap({
             </defs>
           )}
           <g strokeWidth={0.8 * strokeUnit}>
-            <Land countries={world.countries} fills={fills} fine={view.k >= FINE_ZOOM} />
+            <Land countries={world.countries} fills={fills} fine={wantsFine ? fineOutlines : null} />
           </g>
           <g pointerEvents="none" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {lines.map((line, i) => (

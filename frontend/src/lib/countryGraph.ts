@@ -1,3 +1,4 @@
+import fineUrl from '../data/worldFine.json?url'
 import shapesUrl from '../data/worldShapes.json?url'
 import graph from '../data/worldGraph.json'
 
@@ -9,8 +10,6 @@ export interface Country {
   name: string
   /** Simplified outline, used at world/continent zoom (about 3x fewer points). */
   d: string
-  /** Full-detail outline, swapped in when zoomed right in. */
-  dFine: string
   center: [number, number]
 }
 
@@ -31,7 +30,7 @@ export const WORLD_GRAPH: WorldGraph = graph
 
 let worldPromise: Promise<World> | null = null
 
-// The outlines are ~1 MB of path data, so they are fetched on demand and cached for the session.
+// The outlines are a lot of path data, so they are fetched on demand and cached for the session.
 export function loadWorld(): Promise<World> {
   worldPromise ??= fetchWorld().catch((error) => {
     worldPromise = null
@@ -43,15 +42,31 @@ export function loadWorld(): Promise<World> {
 async function fetchWorld(): Promise<World> {
   const response = await fetch(shapesUrl)
   if (!response.ok) throw new Error('Failed to load map data')
-  const shapes = (await response.json()) as { d: string[]; dFine: string[]; center: [number, number][] }
+  const shapes = (await response.json()) as { d: string[]; center: [number, number][] }
   const countries = WORLD_GRAPH.names.map((name, id) => ({
     id,
     name,
     d: shapes.d[id],
-    dFine: shapes.dFine[id],
     center: shapes.center[id],
   }))
   return { countries, adjacency: WORLD_GRAPH.adjacency }
+}
+
+let finePromise: Promise<string[]> | null = null
+
+/** Full-detail outlines by country id, for when the map is zoomed right in (about 3x the size of the coarse ones). */
+export function loadFineOutlines(): Promise<string[]> {
+  finePromise ??= fetch(fineUrl)
+    .then((response) => {
+      if (!response.ok) throw new Error('Failed to load map detail')
+      return response.json() as Promise<{ dFine: string[] }>
+    })
+    .then((fine) => fine.dFine)
+    .catch((error) => {
+      finePromise = null
+      throw error
+    })
+  return finePromise
 }
 
 export interface RouteResult {

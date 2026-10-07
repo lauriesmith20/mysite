@@ -88,11 +88,9 @@ const { countries, adjacency } = buildWorld()
 const out = (name: string, data: unknown) =>
   writeFileSync(new URL(`../src/data/${name}`, import.meta.url), JSON.stringify(data) + '\n')
 
-// The graph is small and is bundled with the game. The shapes are big, and are only fetched for the map.
+// The graph is small and is bundled with the game. The shapes are fetched only when a map is shown.
 out('worldGraph.json', { names: countries.map((c) => c.name), adjacency })
-out('worldShapes.json', {
-  d: countries.map((c) => c.d),
-  dFine: countries.map((c) => c.dFine),
-  center: countries.map((c) => c.center),
-})
+out('worldShapes.json', { d: countries.map((c) => c.d), center: countries.map((c) => c.center) })
+// Full-detail outlines are three times the size and only used when zoomed right in, so they're separate.
+out('worldFine.json', { dFine: countries.map((c) => c.dFine) })
 console.log(`Wrote ${countries.length} countries`)
