@@ -8,6 +8,7 @@ const badges: Record<string, string> = {
   'chef-hat': "What's for dinner?",
   beer: "Who's buying?",
   route: 'Fewest borders',
+  shirt: 'Whose shirt is this?',
 }
 
 export default function TileComponent({ tile }: { tile: Tile }) {
