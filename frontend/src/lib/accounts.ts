@@ -10,14 +10,17 @@ export interface Me {
   avatar_color: string
   status: AccountStatus
   is_admin: boolean
+  /** Links of the home tiles this account can see (see HOME_TILES in tiles.ts). */
+  tile_hrefs: string[]
 }
 
-export interface Account extends Me {
+export interface Account extends Omit<Me, 'tile_hrefs'> {
   created_at: string
 }
 
-export async function getMe(): Promise<Me> {
-  const response = await apiFetch('/api/accounts/me')
+/** `background`: the app is already showing from a cached copy, so don't put the waking-up overlay over it. */
+export async function getMe(background = false): Promise<Me> {
+  const response = await apiFetch('/api/accounts/me', undefined, background)
   return response.json()
 }
 

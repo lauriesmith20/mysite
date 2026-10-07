@@ -4,7 +4,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App.tsx'
+import WakeOverlay from './components/WakeOverlay'
 import './index.css'
+import { wakeBackend } from './lib/api'
 import { msalInstance } from './lib/msal'
 import { rememberReturningUser } from './lib/returningUser'
 
@@ -25,6 +27,9 @@ msalInstance.addEventCallback((event) => {
   }
 })
 
+// Start waking the backend right away, in parallel with the sign-in setup below.
+wakeBackend()
+
 async function bootstrap() {
   await msalInstance.initialize()
   await msalInstance.handleRedirectPromise()
@@ -41,6 +46,7 @@ async function bootstrap() {
       <MsalProvider instance={msalInstance}>
         <HashRouter>
           <App />
+          <WakeOverlay />
         </HashRouter>
       </MsalProvider>
     </StrictMode>,

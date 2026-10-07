@@ -22,6 +22,9 @@ import ProfilePage from './pages/ProfilePage'
 import RecipePage from './pages/RecipePage'
 import RecipesPage from './pages/RecipesPage'
 import SettingsPage from './pages/SettingsPage'
+import SnailGalleryPage from './pages/SnailGalleryPage'
+import SnailParadePage from './pages/SnailParadePage'
+import WakePreviewPage from './pages/WakePreviewPage'
 import ShirtGamePage from './pages/ShirtGamePage'
 
 // Loaded on demand: pulls in the map libraries and country data.
@@ -97,6 +100,9 @@ function App() {
           </PublicLayout>
         }
       />
+      {import.meta.env.DEV && <Route path="/wake-preview" element={<WakePreviewPage />} />}
+      {import.meta.env.DEV && <Route path="/snails" element={<SnailGalleryPage />} />}
+      {import.meta.env.DEV && <Route path="/snail-parade" element={<SnailParadePage />} />}
       <Route path="/*" element={<Shell />} />
     </Routes>
   )

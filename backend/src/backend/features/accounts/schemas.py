@@ -36,6 +36,9 @@ class MeRead(BaseModel):
     avatar_color: str
     status: AccountStatus
     is_admin: bool
+    #: Links of the homepage tiles this account can see. The tiles themselves (title, colour, icon) are defined in
+    #: the frontend, so the home screen can draw without waiting for a second request.
+    tile_hrefs: list[str] = []
 
     model_config = {"from_attributes": True}
 

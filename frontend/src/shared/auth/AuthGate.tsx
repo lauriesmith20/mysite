@@ -1,13 +1,41 @@
 import { useIsAuthenticated, useMsal } from '@azure/msal-react'
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { getMe, type Me } from '../../lib/accounts'
 import { LOCAL_USER } from '../../lib/localAuth'
+import { msalInstance } from '../../lib/msal'
 import { autoSignIn, forgetReturningUser, signIn } from '../../lib/returningUser'
 
 interface AuthContextValue {
   me: Me
   signOut: () => void
   refreshMe: () => void
+}
+
+// The account's details are kept in the browser, so a returning visitor sees the app straight away (name, tiles)
+// without waiting on a backend that may be asleep. It's refreshed from the backend each time, and only an approved
+// account is kept (a pending or denied one must always be checked).
+const ME_CACHE_KEY = 'me-cache:v1'
+
+function accountKey(): string | null {
+  return LOCAL_USER ?? (msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0])?.username ?? null
+}
+
+function readCachedMe(): Me | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ME_CACHE_KEY) ?? 'null') as { key?: string; me?: Me } | null
+    return saved?.me && saved.key === accountKey() && saved.me.status === 'approved' ? saved.me : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedMe(me: Me | null) {
+  try {
+    if (me?.status === 'approved') localStorage.setItem(ME_CACHE_KEY, JSON.stringify({ key: accountKey(), me }))
+    else localStorage.removeItem(ME_CACHE_KEY)
+  } catch {
+    // storage unavailable: the app just waits for the backend each time
+  }
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -26,21 +54,28 @@ export function useOptionalAuth(): AuthContextValue | null {
 export default function AuthGate({ children }: { children: ReactNode }) {
   const isAuthenticated = useIsAuthenticated() || Boolean(LOCAL_USER)
   const { instance } = useMsal()
-  const [me, setMe] = useState<Me | null>(null)
+  const [me, setMe] = useState<Me | null>(() => (isAuthenticated ? readCachedMe() : null))
   const [error, setError] = useState<string | null>(null)
+  const hadCachedMe = useRef(me !== null)
+
+  function load(background: boolean) {
+    return getMe(background).then((fresh) => {
+      setMe(fresh)
+      writeCachedMe(fresh)
+    })
+  }
 
   useEffect(() => {
     if (!isAuthenticated) return
     setError(null)
-    getMe()
-      .then(setMe)
-      .catch(() => setError('Failed to load account status.'))
+    // With a cached account the app is already showing, so a failed refresh isn't worth an error screen.
+    load(hadCachedMe.current).catch(() => {
+      if (!hadCachedMe.current) setError('Failed to load account status.')
+    })
   }, [isAuthenticated])
 
   function refreshMe() {
-    getMe()
-      .then(setMe)
-      .catch(() => {})
+    load(true).catch(() => {})
   }
 
   // Someone who has signed in here before and has since been signed out goes straight back to Microsoft.
@@ -51,6 +86,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   function signOut() {
     if (LOCAL_USER) return // nothing to sign out of in local dev mode
     forgetReturningUser()
+    writeCachedMe(null)
     instance.logoutRedirect()
   }
 

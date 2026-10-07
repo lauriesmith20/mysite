@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 
 from backend.auth import get_or_create_account, require_admin
 from backend.database import get_db
-from backend.features.accounts.models import AccountTileAccess, AllowedAccount
+from backend.features.accounts.models import (
+    AccountStatus,
+    AccountTileAccess,
+    AllowedAccount,
+)
 from backend.features.accounts.schemas import (
     AccountRead,
     AccountUpdate,
@@ -12,6 +16,7 @@ from backend.features.accounts.schemas import (
     MeUpdate,
     TileAccessUpdate,
 )
+from backend.features.tiles.access import visible_tiles
 from backend.features.tiles.models import Tile
 from backend.logging_config import get_logger
 
@@ -20,10 +25,17 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 
+def _me(db: Session, account: AllowedAccount) -> MeRead:
+    me = MeRead.model_validate(account)
+    if account.status == AccountStatus.APPROVED:
+        me.tile_hrefs = [tile.href for tile in visible_tiles(db, account)]
+    return me
+
+
 @router.get("/me", response_model=MeRead)
-def get_me(account: AllowedAccount = Depends(get_or_create_account)) -> AllowedAccount:
+def get_me(account: AllowedAccount = Depends(get_or_create_account), db: Session = Depends(get_db)) -> MeRead:
     """Returns the caller's own allowlist status, creating a pending row on first sign-in."""
-    return account
+    return _me(db, account)
 
 
 @router.patch("/me", response_model=MeRead)
@@ -31,13 +43,13 @@ def update_me(
     payload: MeUpdate,
     account: AllowedAccount = Depends(get_or_create_account),
     db: Session = Depends(get_db),
-) -> AllowedAccount:
+) -> MeRead:
     """Lets the caller set their own nickname/avatar colour."""
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(account, field, value)
     db.commit()
     db.refresh(account)
-    return account
+    return _me(db, account)
 
 
 @router.get("/", response_model=list[AccountRead], dependencies=[Depends(require_admin)])

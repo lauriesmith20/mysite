@@ -40,11 +40,17 @@ features/<name>/
 
 ## 3. Register the tile
 
-Tiles live in the `tiles` table, not in frontend code — create one via `POST /api/tiles/`
-(`title`, `href`, `color`, `icon`). `icon` must be a key registered in
-[frontend/src/lib/icons.ts](frontend/src/lib/icons.ts) (add one if needed — it maps to a
-`lucide-react` icon). Non-admin accounts only see tiles they've been granted via
-`account_tile_access` — grant access through the accounts/tile-access endpoints or the settings UI.
+A tile has two halves:
+
+- **What it looks like** lives in the frontend, in `HOME_TILES` in
+  [frontend/src/lib/tiles.ts](frontend/src/lib/tiles.ts) (`href`, `title`, `color`, `icon`, the small `badge` tag
+  and `public: true` if guests can use it). It's code, not fetched, so the home screen draws instantly even while the
+  backend is waking up. `icon` must be a key registered in [frontend/src/lib/icons.ts](frontend/src/lib/icons.ts)
+  (add one if needed; it maps to a `lucide-react` icon).
+- **Who may see it** lives in the database: a row in the `tiles` table with the same `href`, and `is_public` for
+  guest-friendly ones. Insert it with a seed migration (see `a9d4e6b2c871_seed_shirt_game_tile.py`). Non-admin accounts
+  only see tiles they've been granted via `account_tile_access` (grant access in the settings UI), plus public ones.
+  `/api/accounts/me` returns the `tile_hrefs` an account can see, and the home screen shows `HOME_TILES` filtered by it.
 
 ## 4. Frontend
 

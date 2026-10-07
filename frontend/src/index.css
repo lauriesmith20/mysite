@@ -141,3 +141,287 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
 }
+
+/* Shown while the backend wakes up: a snail crawls left to right across the grass, leaving a slime trail. */
+@keyframes wake-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wake-crawl {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100vw);
+  }
+}
+
+/* The slime is full width, lying along the grass blades. It's uncovered once, from the left, as the snail first moves
+   right (its right edge follows the snail's tail: the snail is 72px wide and its tail ~18% in) and then stays. */
+@keyframes wake-slime-reveal {
+  from {
+    clip-path: inset(0 calc(100% + 59px) 0 0);
+  }
+  to {
+    clip-path: inset(0 -13px 0 0);
+  }
+}
+
+/* A snail crawls by contracting and expanding: the body draws in (and rises a little), then stretches forward (and
+   flattens), anchored at the tail. */
+@keyframes wake-stretch {
+  0%,
+  100% {
+    transform: scale(0.93, 1.04);
+  }
+  50% {
+    transform: scale(1.08, 0.97);
+  }
+}
+
+/* The shell lifts slightly as the body draws in and settles as it stretches out, in step with wake-stretch. */
+@keyframes wake-shell {
+  0%,
+  100% {
+    transform: translateY(-4px);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes wake-sway {
+  from {
+    transform: rotate(-5deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+
+.wake-overlay {
+  animation: wake-fade 400ms ease-out;
+}
+
+.wake-crawler {
+  animation: wake-crawl var(--wake-cross, 9s) linear var(--wake-loops, infinite) forwards;
+}
+
+/* Three kinds of slime: laid down as the snail passes, already there, or wiped up by the rolling shell. */
+.wake-slime[data-mode='draw'] {
+  animation: wake-slime-reveal var(--wake-cross, 9s) linear forwards;
+}
+
+.wake-slime[data-mode='clean'] {
+  animation: wake-slime-clean var(--wake-cross, 8s) linear forwards;
+}
+
+/* The ground: brown mud, fading into yellowy rock, fading into nothing. */
+.wake-soil {
+  background: linear-gradient(to bottom, #4a2c17 0%, #5e3b21 28%, #7d5d31 50%, #a98a4a 74%, #c7a65a 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+
+/* Flecks in the mud (near the top), pebbles in the rock (further down), each fading in and out. */
+.wake-flecks {
+  mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 62%);
+  opacity: 0.55;
+}
+
+.wake-pebbles {
+  mask-image: linear-gradient(to bottom, transparent 25%, #000 55%, #000 62%, transparent 100%);
+  opacity: 0.8;
+}
+
+/* The foot and the head are separate groups (the shell sits between them), so both stretch from the same point at the
+   tail, in the snail's own coordinates, and stay joined together. */
+.wake-body {
+  transform-box: view-box;
+  transform-origin: 6px 140px;
+  animation: wake-stretch var(--wake-stretch, 1.4s) ease-in-out infinite;
+}
+
+.wake-shell {
+  animation: wake-shell var(--wake-stretch, 1.4s) ease-in-out infinite;
+}
+
+/* Each eye-stalk sways about its base, in the snail's own coordinates (the padding rect inside it would otherwise
+   change where "bottom center" is). */
+.wake-stalk {
+  transform-box: view-box;
+  transform-origin: 158px 66px;
+  animation: wake-sway 1.3s ease-in-out infinite alternate;
+}
+
+.wake-stalk-2 {
+  transform-origin: 172px 64px;
+  animation-delay: -0.6s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wake-overlay,
+  .wake-body,
+  .wake-shell,
+  .wake-roll,
+  .wake-boot,
+  .wake-ball,
+  .wake-siren-red,
+  .wake-siren-blue,
+  .wake-spark,
+  .wake-tyre,
+  .wake-lines,
+  .wake-stalk {
+    animation: none;
+  }
+
+  /* No crossing: the snail just sits in the middle of the grass. */
+  .wake-crawler {
+    animation: none;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .wake-slime {
+    display: none;
+  }
+}
+
+/* The rolling shell wipes up the slime behind it: what's left of the roller's centre stays, the rest is cleared. */
+@keyframes wake-slime-clean {
+  from {
+    clip-path: inset(0 0 0 -20px);
+  }
+  to {
+    clip-path: inset(0 0 0 calc(100% + 20px));
+  }
+}
+
+/* The shell turns as it goes (--wake-roll is how far, set from the screen width). */
+@keyframes wake-roll {
+  to {
+    transform: rotate(var(--wake-roll, 1260deg));
+  }
+}
+
+.wake-roll {
+  animation: wake-roll var(--wake-cross, 8s) linear var(--wake-loops, infinite) forwards;
+}
+
+/* The football snail winds up its boot and kicks, and the ball rolls ahead of it, then it catches up and kicks again.
+   Both go round on the same 2.4s, relative to the snail, so it works at any screen width. */
+@keyframes wake-boot {
+  0% {
+    transform: rotate(-38deg);
+  }
+  7.5% {
+    transform: rotate(22deg);
+  }
+  14%,
+  94% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-38deg);
+  }
+}
+
+@keyframes wake-ball {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  7.5% {
+    transform: translateX(0) rotate(0deg);
+    animation-timing-function: ease-out;
+  }
+  30% {
+    transform: translateX(44px) rotate(540deg);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: translateX(0) rotate(1080deg);
+  }
+}
+
+.wake-boot {
+  transform-box: view-box;
+  transform-origin: 178px 132px;
+  animation: wake-boot 2.4s ease-in-out infinite;
+}
+
+.wake-ball {
+  animation: wake-ball 2.4s linear infinite;
+}
+
+/* Police: the light bar and the taser's spark flash. */
+@keyframes wake-flash-a {
+  0%,
+  49.9% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes wake-flash-b {
+  0%,
+  49.9% {
+    opacity: 0.3;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+.wake-siren-red {
+  animation: wake-flash-a 0.6s linear infinite;
+}
+
+.wake-siren-blue {
+  animation: wake-flash-b 0.6s linear infinite;
+}
+
+.wake-spark {
+  animation: wake-flash-a 0.3s linear infinite;
+}
+
+/* F1: the tyres spin and the speed lines streak. */
+@keyframes wake-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wake-streak {
+  from {
+    transform: translateX(0);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateX(-10px);
+    opacity: 0.35;
+  }
+}
+
+.wake-tyre {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wake-spin 0.2s linear infinite;
+}
+
+.wake-lines {
+  animation: wake-streak 0.12s linear infinite;
+}
+
+/* The snail gallery shows everything still. */
+.wake-static,
+.wake-static * {
+  animation: none !important;
+}

@@ -1,8 +1,8 @@
 import { House, LogOut, Menu, Moon, Settings, Sun, User, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthGate'
-import { listTiles, type Tile } from '../../lib/tiles'
+import { tilesFor } from '../../lib/tiles'
 import { useTheme } from '../../lib/theme'
 
 const iconButton =
@@ -14,16 +14,10 @@ const menuLink =
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [tiles, setTiles] = useState<Tile[]>([])
   const { me, signOut } = useAuth()
   const { dark, toggle } = useTheme()
   const close = () => setIsOpen(false)
-
-  useEffect(() => {
-    listTiles()
-      .then(setTiles)
-      .catch(() => {})
-  }, [])
+  const tiles = tilesFor(me)
 
   const themeButton = (
     <button
@@ -51,7 +45,7 @@ export default function Sidebar() {
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {tiles.map((tile) => (
-              <NavLink key={tile.id} to={tile.href} className={navLink}>
+              <NavLink key={tile.href} to={tile.href} className={navLink}>
                 {tile.title}
               </NavLink>
             ))}
@@ -97,7 +91,7 @@ export default function Sidebar() {
           className="absolute inset-x-3 top-full flex flex-col gap-1 rounded-3xl bg-(--bg) p-3 shadow-(--tile-shadow) ring-1 ring-black/5 md:hidden dark:ring-white/10"
         >
           {tiles.map((tile) => (
-            <Link key={tile.id} to={tile.href} onClick={close} className={menuLink}>
+            <Link key={tile.href} to={tile.href} onClick={close} className={menuLink}>
               {tile.title}
             </Link>
           ))}
