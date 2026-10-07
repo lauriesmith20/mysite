@@ -10,7 +10,7 @@ const GAP_MS = 800
 const button = 'rounded-full bg-white/90 px-4 py-2 text-sm font-bold text-black'
 
 /**
- * Dev only (/snail-parade): the waking-up screen with the whole series crossing one by one. The first snail lays the
+ * /snail-parade (not linked from anywhere): the waking-up screen with the whole series crossing one by one. The first snail lays the
  * slime, the others walk over it, and the rolling shell at the end wipes it up before the parade starts again.
  */
 export default function SnailParadePage() {

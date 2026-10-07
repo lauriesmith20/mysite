@@ -101,8 +101,9 @@ function App() {
         }
       />
       {import.meta.env.DEV && <Route path="/wake-preview" element={<WakePreviewPage />} />}
-      {import.meta.env.DEV && <Route path="/snails" element={<SnailGalleryPage />} />}
-      {import.meta.env.DEV && <Route path="/snail-parade" element={<SnailParadePage />} />}
+      {/* Not linked from anywhere: just for fun, at /#/snails and /#/snail-parade. They need no backend or sign-in. */}
+      <Route path="/snails" element={<SnailGalleryPage />} />
+      <Route path="/snail-parade" element={<SnailParadePage />} />
       <Route path="/*" element={<Shell />} />
     </Routes>
   )

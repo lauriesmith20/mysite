@@ -3,7 +3,7 @@ import { SnailFigure } from '../components/WakeScene'
 import { SNAILS } from '../components/wakeSnails'
 import Page from '../shared/layout/Page'
 
-/** Dev only (/snails): every snail in the series, standing still and big, to look over and adjust. Tap one to zoom. */
+/** /snails (not linked from anywhere): every snail in the series, standing still and big, to look over and adjust. Tap one to zoom. */
 export default function SnailGalleryPage() {
   const [zoomed, setZoomed] = useState<string | null>(null)
   return (
