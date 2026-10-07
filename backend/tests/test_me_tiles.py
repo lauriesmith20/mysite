@@ -1,6 +1,7 @@
 """/me carries the links of the homepage tiles an account can see (the tiles themselves live in the frontend)."""
 from fastapi.testclient import TestClient
 
+from backend.auth import get_or_create_account
 from backend.database import SessionLocal
 from backend.features.accounts.models import (
     AccountStatus,
@@ -15,19 +16,21 @@ client = TestClient(app)
 
 
 def test_admin_me_lists_every_tile_link() -> None:
-    admin = {"X-Local-User": "dummy-admin"}
-    client.post(
-        "/api/tiles/",
-        headers=admin,
-        json={"title": "Admin Seen", "href": "/admin-seen", "color": "#fff", "icon": None, "is_public": False},
-    )
-    client.get("/api/accounts/me", headers=admin)  # creates the account on first sign-in, as a pending non-admin
     with SessionLocal() as db:
-        account = db.query(AllowedAccount).filter(AllowedAccount.email == "dummy.admin@example.com").one()
-        account.is_admin = True
-        account.status = AccountStatus.APPROVED
+        admin = AllowedAccount(
+            email="tile-admin@example.com", display_name="Tile Admin", status=AccountStatus.APPROVED, is_admin=True
+        )
+        db.add_all([admin, Tile(title="Admin Seen", href="/admin-seen", color="#fff", icon=None, is_public=False)])
         db.commit()
-    me = client.get("/api/accounts/me", headers=admin).json()
+        db.refresh(admin)
+        db.expunge(admin)
+
+    # Sign in as that account directly, rather than through the local-only auth bypass (CI doesn't have it).
+    app.dependency_overrides[get_or_create_account] = lambda: admin
+    try:
+        me = client.get("/api/accounts/me").json()
+    finally:
+        del app.dependency_overrides[get_or_create_account]
     assert me["is_admin"] and "/admin-seen" in me["tile_hrefs"]
 
 
