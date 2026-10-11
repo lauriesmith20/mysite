@@ -17,9 +17,10 @@ def _number(value: object) -> int:
 
 
 def _country_hopper_rank(result: DailyGameResult) -> RankKey:
-    """Suitcases, then lives left, then fewer hops. Every loss ties: stopping early isn't "fewer hops"."""
+    """Suitcases, then lives left, then fewer hops. Suitcases already reflect how close a lost game ended, but stopping
+    early isn't "fewer hops", so losses that score the same tie."""
     if result.outcome != "won":
-        return (0, 0, 0)
+        return (result.score, 0, 0)
     details = result.details or {}
     return (result.score, _number(details.get("lives_left")), -_number(details.get("borders")))
 

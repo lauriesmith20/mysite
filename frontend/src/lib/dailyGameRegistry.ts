@@ -69,7 +69,10 @@ export const DAILY_GAMES: Record<string, DailyGameInfo> = {
     describe: ({ details, outcome }) => {
       const borders = count(details.borders)
       const shortest = count(details.shortest)
-      if (outcome === 'lost') return 'Out of lives'
+      if (outcome === 'lost') {
+        const away = count(details.distance_left)
+        return away === null ? 'Out of lives' : `Out of lives, ${away} ${away === 1 ? 'country' : 'countries'} away`
+      }
       if (borders === null) return ''
       return `${borders} borders${shortest !== null ? ` (shortest ${shortest})` : ''}`
     },

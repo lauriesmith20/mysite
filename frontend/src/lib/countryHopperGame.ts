@@ -6,8 +6,6 @@ export type Adjacency = number[][]
 
 export const MAX_LIVES = 3
 export const MAX_SUITCASES = 5
-/** Routes get more slack the longer they are: the allowance step is 1 + floor(shortest / this). */
-export const SCALING_FACTOR = 5
 /** The daily pair is always this many borders apart, at least and at most. */
 export const MIN_BORDERS = 4
 export const MAX_BORDERS = 8
@@ -108,19 +106,25 @@ export function judgeGuess(adjacency: Adjacency, path: number[], end: number, gu
   return guess === end ? 'win' : 'hop'
 }
 
-/** How many extra borders each suitcase of slack allows for a puzzle of this length. */
-export function allowanceStep(shortest: number): number {
-  return 1 + Math.floor(shortest / SCALING_FACTOR)
-}
-
 /**
- * Suitcases for a finished route of `borders` borders: 5 for a shortest route, then one fewer per
- * `allowanceStep` of extra length, never below 1 for finishing at all.
+ * Suitcases for a finished game. Solved: 5 for the shortest route, 4 for getting there any other way. Out of lives:
+ * still something if you ended close, counted in countries from the destination (along the shortest way from where you
+ * stopped): 3 if your last country borders it, 2 if it's two away, 1 if three away, and nothing further off.
  */
-export function suitcasesFor(shortest: number, borders: number): number {
-  const extra = borders - shortest
-  if (extra <= 0) return MAX_SUITCASES
-  return Math.max(1, MAX_SUITCASES - Math.ceil(extra / allowanceStep(shortest)))
+export function scoreFor({
+  won,
+  shortest,
+  borders,
+  distanceLeft,
+}: {
+  won: boolean
+  shortest: number
+  borders: number
+  /** Borders still to cross from the last country reached to the destination (0 once you've got there). */
+  distanceLeft: number
+}): number {
+  if (won) return borders <= shortest ? MAX_SUITCASES : MAX_SUITCASES - 1
+  return Math.max(0, MAX_SUITCASES - 1 - distanceLeft)
 }
 
 /**

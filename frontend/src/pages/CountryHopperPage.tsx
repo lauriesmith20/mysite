@@ -11,6 +11,7 @@ import WorldMap, { HATCH_FILL, type MapLine } from '../components/WorldMap'
 import { loadWorld, WORLD_GRAPH, type World } from '../lib/countryGraph'
 import {
   MAX_LIVES,
+  bfsDistances,
   MAX_SUITCASES,
   closestShortestRoute,
   dateKey,
@@ -18,7 +19,7 @@ import {
   pickDailyPuzzle,
   puzzleNumber,
   shareText,
-  suitcasesFor,
+  scoreFor,
   type Puzzle,
 } from '../lib/countryHopperGame'
 import { DAILY_GAMES } from '../lib/dailyGameRegistry'
@@ -154,6 +155,16 @@ function Round({ hopper, puzzle, day }: { hopper: HopperWorld; puzzle: Puzzle; d
   const [synced, setSynced] = useState(false)
   const [rivals, setRivals] = useState<RivalToday[]>([])
 
+  // How far the destination is from every country, so a game that runs out of lives still scores for ending close.
+  const distances = useMemo(() => bfsDistances(hopper.adjacency, puzzle.end), [hopper, puzzle])
+  const distanceLeft = distances[game.path[game.path.length - 1]]
+  const finalScore = scoreFor({
+    won: game.status === 'won',
+    shortest: puzzle.shortest,
+    borders: game.path.length - 1,
+    distanceLeft,
+  })
+
   useEffect(() => saveGame(day, game, names), [day, game, names])
 
   // A finished game already on the account (played on another device, or before this browser's
@@ -180,20 +191,21 @@ function Round({ hopper, puzzle, day }: { hopper: HopperWorld; puzzle: Puzzle; d
     recorded.current = true
     submitResult(GAME_KEY, {
       puzzle_date: day,
-      score: game.status === 'won' ? suitcasesFor(puzzle.shortest, game.path.length - 1) : 0,
+      score: finalScore,
       outcome: game.status === 'won' ? 'won' : 'lost',
       details: {
         path: game.path.map((id) => names[id]),
         lives_left: game.lives,
         borders: game.path.length - 1,
         shortest: puzzle.shortest,
+        distance_left: distanceLeft,
       },
     })
       .then(() => setSynced(true))
       .catch(() => {
         recorded.current = false // not saved: try again next time this page is opened
       })
-  }, [signedIn, game, day, names, puzzle])
+  }, [signedIn, game, day, names, puzzle, finalScore, distanceLeft])
 
   // How your accepted rivals did today. The server only reveals their result once yours is recorded.
   useEffect(() => {
@@ -212,7 +224,7 @@ function Round({ hopper, puzzle, day }: { hopper: HopperWorld; puzzle: Puzzle; d
   const borders = game.path.length - 1
   const visited = useMemo(() => new Set(game.path), [game.path])
   const playing = game.status === 'playing'
-  const suitcases = game.status === 'won' ? suitcasesFor(puzzle.shortest, borders) : 0
+  const suitcases = playing ? 0 : finalScore
 
   function submit(id: number) {
     if (!playing) return
@@ -366,7 +378,7 @@ function Round({ hopper, puzzle, day }: { hopper: HopperWorld; puzzle: Puzzle; d
                 ? borders === puzzle.shortest
                   ? `${borders} borders: the shortest possible route!`
                   : `${borders} borders. The shortest route is ${puzzle.shortest}.`
-                : `The shortest route was ${puzzle.shortest} borders.`}
+                : `You ended ${distanceLeft} ${distanceLeft === 1 ? 'country' : 'countries'} from ${label(puzzle.end)}. The shortest route was ${puzzle.shortest} borders.`}
             </p>
             <button
               type="button"

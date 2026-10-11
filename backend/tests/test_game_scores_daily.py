@@ -142,11 +142,16 @@ def test_tiebreak_order_is_suitcases_then_lives_then_fewer_hops() -> None:
     assert compare_results(game, _result("won", 4, 2, 5), _result("won", 4, 2, 5)) == (0, None)
 
 
-def test_losses_tie_and_any_win_beats_a_loss() -> None:
+def test_losses_rank_by_how_close_they_ended_and_a_win_beats_any_loss() -> None:
     game = GAMES[KEY]
-    # Giving up after fewer hops must not count as "fewer hops".
+    # Out of lives next to the destination (3) beats ending three countries away (1).
+    assert compare_results(game, _result("lost", 3, 0, 5), _result("lost", 1, 0, 5)) == (1, "suitcases")
+    # Equal scores tie, however many hops it took: giving up after fewer hops isn't "fewer hops".
+    assert compare_results(game, _result("lost", 2, 0, 1), _result("lost", 2, 0, 6)) == (0, None)
     assert compare_results(game, _result("lost", 0, 0, 1), _result("lost", 0, 0, 6)) == (0, None)
-    assert compare_results(game, _result("won", 1, 1, 12), _result("lost", 0, 0, 1)) == (1, "suitcases")
+    # Getting there at all (4) beats the best loss (3).
+    assert compare_results(game, _result("won", 4, 1, 12), _result("lost", 3, 0, 1)) == (1, "suitcases")
+    assert compare_results(game, _result("won", 5, 1, 4), _result("won", 4, 3, 4)) == (1, "suitcases")
 
 
 # ── Challenge flow ───────────────────────────────────────────────────────────────────────────────
